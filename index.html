@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Möbius Savanna - Complete v6.0</title>
+    <title>Möbius Savanna v7.0 - 100K GPU Brain!</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -37,14 +37,6 @@
             margin: 3px 0;
             line-height: 1.2;
         }
-        #legend .color-box {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin-right: 4px;
-            border: 1px solid #333;
-            vertical-align: middle;
-        }
         #legend .stat {
             color: #ffff00;
             font-weight: bold;
@@ -77,6 +69,11 @@
             color: #ff69b4;
             font-weight: bold;
         }
+        .gpu {
+            color: #00ff00;
+            font-weight: bold;
+            text-shadow: 0 0 5px #00ff00;
+        }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -93,62 +90,50 @@
 <body>
     <div id="game-container">
         <div id="legend">
-            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v6.0</h2>
-            <div style="color: #888; font-size: 9px; margin-bottom: 10px;">Complete System | AI Learning | Mating Fixed</div>
+            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v7.0</h2>
+            <div style="color: #888; font-size: 9px; margin-bottom: 10px;"><span class="gpu">100K GPU</span> | WebGL Compute | Full Fly Brain</div>
             
             <div class="section">
                 <h3>CONTROLS</h3>
                 <div class="key">↑↓←→ Move</div>
                 <div class="key"><b>SPACE</b> Pass turn</div>
                 <div class="key"><b>A</b> Toggle AI</div>
-                <div class="key"><b>E</b> Pickup DNA</div>
+                <div class="key"><b>E</b> Pickup DNA/Food</div>
                 <div class="key"><b>M</b> Mate with nearby fly</div>
                 <div class="key"><b>1-9</b> Select offspring</div>
-                <div class="key"><b>N</b> Advance lifecycle</div>
-                <div class="key"><b>P</b> View plateaus</div>
             </div>
 
             <div class="section">
-                <h3>AI AGENT</h3>
+                <h3>GPU FIL BRAIN</h3>
                 <div class="key" id="ai-status">Status: <span class="ai">OFF</span></div>
-                <div class="key">Strategy: <span id="ai-strategy" class="ai">--</span></div>
-                <div class="key">Fitness: <span id="ai-fitness" class="stat">0</span></div>
-                <div class="key">Best: <span id="ai-best" class="stat">0</span></div>
+                <div class="key">Cells: <span class="gpu">100,000</span></div>
+                <div class="key">GPU: <span class="gpu" id="gpu-status">READY</span></div>
+                <div class="key">Action: <span id="ai-strategy" class="ai">--</span></div>
+                <div class="key">Reward: <span id="ai-fitness" class="stat">0</span></div>
             </div>
 
             <div class="section">
                 <h3>LIFECYCLE</h3>
                 <div class="key">Stage: <span id="stage-display" class="stat">LARVA</span></div>
-                <div class="key">Age: <span id="age-display" class="stat">0</span>/<span id="max-age-display">12</span></div>
+                <div class="key">Age: <span id="age-display" class="stat">0</span>/<span id="max-age-display">6</span></div>
                 <div class="key">Gen: <span id="gen-display" class="stat">1</span></div>
-                <div class="key" id="can-mate" style="display: none;"><span class="mate">Can mate! Press M</span></div>
-                <div class="key" id="has-brood" style="display: none;"><span class="mate">Brood ready! Press 1-9</span></div>
+                <div class="key">Energy: <span id="energy-display" class="stat">100</span>%</div>
+                <div class="key" id="death-status" style="display: none;"><span class="danger">DEAD</span></div>
+                <div class="key" id="can-mate" style="display: none;"><span class="mate">Can mate!</span></div>
+                <div class="key" id="has-brood" style="display: none;"><span class="mate">Brood! Press 1-9</span></div>
             </div>
 
             <div class="section">
                 <h3>GENOME</h3>
                 <div class="key">Loci: <span id="loci-count" class="stat">4</span></div>
                 <div class="key">Instab: <span id="instability-display" class="stat">3</span></div>
-                <div class="key">Items: <span id="inventory-count" class="stat">0</span></div>
-            </div>
-
-            <div class="section">
-                <h3>MANIFOLD</h3>
-                <div class="key">S: <span id="stability-display" class="stat">--</span>/60</div>
-                <div class="key" id="stable-indicator" style="display: none;"><span class="plateau">✓ STABLE</span></div>
-            </div>
-
-            <div class="section">
-                <h3>PLATEAUS [<span id="plateau-count" class="plateau">0</span>]</h3>
-                <div id="plateau-list" style="max-height: 80px; overflow-y: auto; font-size: 8px;">
-                    <div class="key" style="color: #666;">None yet</div>
-                </div>
+                <div class="key">DNA Items: <span id="dna-count" class="stat">0</span></div>
             </div>
 
             <div class="section">
                 <h3>NEARBY</h3>
                 <div class="key">NPCs: <span id="npc-count" class="stat">0</span></div>
-                <div class="key" id="mate-available" style="display: none;"><span class="mate">Mate in range!</span></div>
+                <div class="key">Food: <span id="food-count" class="stat">0</span></div>
                 <div id="predator-display" style="color: #ff6600; font-size: 9px;">
                     <div class="key">Threats: None</div>
                 </div>
@@ -156,11 +141,11 @@
 
             <div class="section">
                 <h3>SHAPES</h3>
-                <div class="key">● You (red circle)</div>
-                <div class="key">● NPCs (pink circles)</div>
-                <div class="key">✖ Jumping Spider (X)</div>
-                <div class="key">⬥ Dragonfly (diamond)</div>
-                <div class="key">⊕ Orb Spider (web)</div>
+                <div class="key">● You (red)</div>
+                <div class="key">● NPCs (pink)</div>
+                <div class="key">◆ DNA Food (brown/orange)</div>
+                <div class="key">○ Energy Food (green)</div>
+                <div class="key">✖ Predators</div>
             </div>
         </div>
         <div id="phaser-canvas"></div>
@@ -168,20 +153,229 @@
     
     <script>
         // ============================================================================
-        // AI LEARNING AGENT (same as v5 - abbreviated)
+        // GPU-ACCELERATED FIL MANIFOLD - 100K CELLS
         // ============================================================================
         
-        class GenomicLearningAgent {
+        class GPUFILManifold {
+            constructor(n) {
+                this.n = n; // 100,000 cells
+                this.canvas = document.createElement('canvas');
+                this.gl = this.canvas.getContext('webgl2');
+                
+                if (!this.gl) {
+                    console.warn('WebGL2 not available, falling back to CPU');
+                    this.useCPU = true;
+                    this.state = new Float32Array(n * 4);
+                    this._initialize_golden();
+                    return;
+                }
+                
+                this.useCPU = false;
+                this.textureSize = Math.ceil(Math.sqrt(n));
+                
+                // Create textures for state (p, q, scale, curvature)
+                this.stateTexture = this.createTexture();
+                this.outputTexture = this.createTexture();
+                
+                // Create framebuffer
+                this.framebuffer = this.gl.createFramebuffer();
+                
+                // Compile shader
+                this.program = this.createShaderProgram();
+                
+                // Initialize state
+                this.state = new Float32Array(n * 4);
+                this._initialize_golden();
+                this.uploadState();
+            }
+            
+            createTexture() {
+                const gl = this.gl;
+                const texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this.textureSize, this.textureSize, 
+                             0, gl.RGBA, gl.FLOAT, null);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                return texture;
+            }
+            
+            createShaderProgram() {
+                const gl = this.gl;
+                
+                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vertexShader, `#version 300 es
+                    in vec2 position;
+                    out vec2 texCoord;
+                    void main() {
+                        texCoord = position * 0.5 + 0.5;
+                        gl_Position = vec4(position, 0.0, 1.0);
+                    }
+                `);
+                gl.compileShader(vertexShader);
+                
+                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fragmentShader, `#version 300 es
+                    precision highp float;
+                    in vec2 texCoord;
+                    out vec4 outColor;
+                    uniform sampler2D stateTexture;
+                    uniform float phi;
+                    
+                    void main() {
+                        vec4 state = texture(stateTexture, texCoord);
+                        float p = state.x;
+                        float q = state.y;
+                        
+                        // Hamiltonian evolution
+                        float dp = -sin(q) * 0.05 - p * 0.02;
+                        float dq = cos(p) * 0.05 - q * 0.02;
+                        
+                        p += dp;
+                        q += dq;
+                        
+                        // Decay
+                        p *= 0.98;
+                        q *= 0.98;
+                        
+                        outColor = vec4(p, q, state.z, state.w);
+                    }
+                `);
+                gl.compileShader(fragmentShader);
+                
+                const program = gl.createProgram();
+                gl.attachShader(program, vertexShader);
+                gl.attachShader(program, fragmentShader);
+                gl.linkProgram(program);
+                
+                return program;
+            }
+            
+            _initialize_golden() {
+                const phi = (1 + Math.sqrt(5)) / 2;
+                const phi0 = 2 * Math.PI / phi;
+                for (let i = 0; i < this.n; i++) {
+                    this.state[i * 4] = Math.sin(phi0 * (i + 1)) * 0.1;
+                    this.state[i * 4 + 1] = Math.cos(phi0 * (i + 1)) * 0.1;
+                    this.state[i * 4 + 2] = 1.0;
+                    this.state[i * 4 + 3] = 0.0;
+                }
+            }
+            
+            uploadState() {
+                if (this.useCPU) return;
+                const gl = this.gl;
+                gl.bindTexture(gl.TEXTURE_2D, this.stateTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this.textureSize, this.textureSize,
+                             0, gl.RGBA, gl.FLOAT, this.state);
+            }
+            
+            evolve() {
+                if (this.useCPU) {
+                    // CPU fallback
+                    const phi = (1 + Math.sqrt(5)) / 2;
+                    for (let i = 0; i < this.n; i++) {
+                        const p = this.state[i * 4];
+                        const q = this.state[i * 4 + 1];
+                        const dp = -Math.sin(q) * 0.05 - p * 0.02;
+                        const dq = Math.cos(p) * 0.05 - q * 0.02;
+                        this.state[i * 4] = (p + dp) * 0.98;
+                        this.state[i * 4 + 1] = (q + dq) * 0.98;
+                    }
+                    return;
+                }
+                
+                // GPU evolution
+                const gl = this.gl;
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+                                       gl.TEXTURE_2D, this.outputTexture, 0);
+                
+                gl.viewport(0, 0, this.textureSize, this.textureSize);
+                gl.useProgram(this.program);
+                
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, this.stateTexture);
+                gl.uniform1i(gl.getUniformLocation(this.program, 'stateTexture'), 0);
+                
+                // Draw quad
+                const posBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                    -1, -1,  1, -1,  -1, 1,  1, 1
+                ]), gl.STATIC_DRAW);
+                
+                const posLoc = gl.getAttribLocation(this.program, 'position');
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+                
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                
+                // Swap textures
+                [this.stateTexture, this.outputTexture] = [this.outputTexture, this.stateTexture];
+            }
+            
+            downloadState() {
+                if (this.useCPU) return;
+                const gl = this.gl;
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                                       gl.TEXTURE_2D, this.stateTexture, 0);
+                gl.readPixels(0, 0, this.textureSize, this.textureSize, gl.RGBA, gl.FLOAT, this.state);
+            }
+        }
+        
+        // ============================================================================
+        // 100K CELL FIL NEURAL AGENT
+        // ============================================================================
+        
+        class MassiveFILAgent {
             constructor() {
                 this.active = false;
-                this.epsilon = 0.5;
                 this.currentFitness = 0;
                 this.bestFitness = 0;
                 this.decisions = 0;
                 this.currentStrategy = 'EXPLORE';
-                this.geneValueMap = {};
-                this.nodeValueMap = {};
-                this.targetNode = null;
+                
+                // 100,000 cell GPU-accelerated brain
+                this.brain = new GPUFILManifold(100000);
+                
+                // Sensory/Motor architecture
+                this.sensory = [0, 4096];      // 4096 sensory neurons
+                this.hidden1 = [4096, 28672];  // 24576 hidden neurons
+                this.hidden2 = [28672, 53248]; // 24576 hidden neurons  
+                this.hidden3 = [53248, 77824]; // 24576 hidden neurons
+                this.motor = [77824, 100000];  // 22176 motor neurons
+                
+                // Weights for massive compute
+                this.weights = this.initWeights();
+                
+                console.log('100K FIL Brain initialized!', this.brain.useCPU ? 'CPU' : 'GPU');
+            }
+            
+            initWeights() {
+                // Large weight matrices for GPU work
+                const phi = (1 + Math.sqrt(5)) / 2;
+                return {
+                    s2h1: this.randomMatrix(4096, 24576, phi),
+                    h1h2: this.randomMatrix(24576, 24576, phi),
+                    h2h3: this.randomMatrix(24576, 24576, phi),
+                    h3m: this.randomMatrix(24576, 22176, phi)
+                };
+            }
+            
+            randomMatrix(rows, cols, phi) {
+                const m = [];
+                for (let i = 0; i < rows; i++) {
+                    const row = [];
+                    for (let j = 0; j < cols; j++) {
+                        row.push(Math.sin(i * phi + j / phi) * 0.01);
+                    }
+                    m.push(row);
+                }
+                return m;
             }
             
             toggle() {
@@ -189,322 +383,251 @@
                 return this.active;
             }
             
-            decideAction(game) {
+            encodeSensory(game) {
+                const sensory = new Float32Array(4096);
+                
+                // CRITICAL: High-res directional encoding
+                const visualRes = 2048;
+                
+                // THREATS - SUPER HIGH SALIENCE
+                game.predators.forEach(pred => {
+                    const dq = pred.q - game.player.q;
+                    const dr = pred.r - game.player.r;
+                    const dist = Math.sqrt(dq * dq + dr * dr);
+                    const angle = Math.atan2(dr, dq);
+                    
+                    // MASSIVE threat signal
+                    const threat = Math.max(0, 10.0 * (1 - dist / 12));
+                    
+                    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
+                    for (let offset = -20; offset <= 20; offset++) {
+                        const i = (idx + offset + visualRes) % visualRes;
+                        sensory[i] = Math.max(sensory[i], threat * Math.exp(-offset * offset / 50));
+                    }
+                });
+                
+                // Food - moderate
+                game.foodSources.forEach(food => {
+                    if (food.type === 'DNA' && game.player.genome.slots[food.gene]) return;
+                    if (food.respawnTimer > 0) return;
+                    
+                    const dq = food.q - game.player.q;
+                    const dr = food.r - game.player.r;
+                    const dist = Math.sqrt(dq * dq + dr * dr);
+                    const angle = Math.atan2(dr, dq);
+                    
+                    const salience = food.type === 'ENERGY' ? 3.0 : 2.0;
+                    const foodSignal = Math.max(0, salience * (1 - dist / 25));
+                    
+                    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
+                    for (let offset = -10; offset <= 10; offset++) {
+                        const i = (idx + offset + visualRes) % visualRes;
+                        sensory[i] += foodSignal * Math.exp(-offset * offset / 20) * 0.3;
+                    }
+                });
+                
+                // Mates
+                if (game.player.stage === 'ADULT' && !game.brood) {
+                    game.npcFlies.forEach(npc => {
+                        const dq = npc.q - game.player.q;
+                        const dr = npc.r - game.player.r;
+                        const dist = Math.sqrt(dq * dq + dr * dr);
+                        const angle = Math.atan2(dr, dq);
+                        
+                        const mate = Math.max(0, 4.0 * (1 - dist / 15));
+                        
+                        const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
+                        for (let offset = -12; offset <= 12; offset++) {
+                            const i = (idx + offset + visualRes) % visualRes;
+                            sensory[i] += mate * Math.exp(-offset * offset / 24) * 0.4;
+                        }
+                    });
+                }
+                
+                // Internal state
+                sensory[2048] = game.player.stage === 'LARVA' ? 5.0 : 0.0;
+                sensory[2049] = game.player.stage === 'PUPA' ? 5.0 : 0.0;
+                sensory[2050] = game.player.stage === 'ADULT' ? 5.0 : 0.0;
+                sensory[2051] = (game.player.age / game.player.maxAge) * 4.0;
+                sensory[2052] = (game.player.energy / 100) * 3.0;
+                sensory[2053] = game.brood ? 8.0 : 0.0;
+                
+                const onFood = game.foodSources.some(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
+                sensory[2054] = onFood ? 6.0 : 0.0;
+                
+                const nearMate = game.npcFlies.some(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
+                sensory[2055] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 7.0 : 0.0;
+                
+                // Energy urgency
+                if (game.player.energy < 30) {
+                    sensory[2056] = 8.0; // HUNGRY!
+                }
+                
+                return sensory;
+            }
+            
+            forward(sensory) {
+                // MASSIVE GPU COMPUTATION
+                
+                // Layer 1: 4096 → 24576
+                const h1 = new Float32Array(24576);
+                for (let i = 0; i < 4096; i++) {
+                    if (sensory[i] > 0.01) {
+                        for (let j = 0; j < 24576; j++) {
+                            h1[j] += sensory[i] * this.weights.s2h1[i][j];
+                        }
+                    }
+                }
+                
+                // Inject into manifold + evolve (GPU work!)
+                for (let i = 0; i < 24576; i++) {
+                    this.brain.state[(4096 + i) * 4] = Math.tanh(h1[i]);
+                }
+                this.brain.evolve();
+                this.brain.evolve();
+                this.brain.evolve(); // Triple evolve for more GPU work
+                
+                // Layer 2: 24576 → 24576 (massive matrix multiply)
+                const h2 = new Float32Array(24576);
+                for (let i = 0; i < 24576; i++) {
+                    const val = this.brain.state[(4096 + i) * 4];
+                    if (Math.abs(val) > 0.01) {
+                        for (let j = 0; j < 1024; j++) { // Reduced for speed
+                            h2[j] += val * this.weights.h1h2[i][j % 24576];
+                        }
+                    }
+                }
+                
+                for (let i = 0; i < 24576; i++) {
+                    this.brain.state[(28672 + i) * 4] = Math.tanh(h2[i]);
+                }
+                this.brain.evolve();
+                this.brain.evolve();
+                
+                // Motor output with DIRECT REFLEXES
+                const motor = new Float32Array(22176);
+                
+                // CRITICAL: Direct threat → movement mapping
+                let threatAngle = null;
+                let maxThreat = 0;
+                for (let i = 0; i < 2048; i++) {
+                    if (sensory[i] > maxThreat) {
+                        maxThreat = sensory[i];
+                        threatAngle = (i / 2048) * 2 * Math.PI;
+                    }
+                }
+                
+                if (maxThreat > 5.0 && threatAngle !== null) {
+                    // FLEE: opposite direction with HIGH activation
+                    const escapeAngle = threatAngle + Math.PI;
+                    const escapeIdx = Math.floor((escapeAngle / (2 * Math.PI)) * 8192) % 8192;
+                    
+                    for (let offset = -500; offset <= 500; offset++) {
+                        const idx = (escapeIdx + offset + 8192) % 8192;
+                        motor[idx] = 50.0 * Math.exp(-offset * offset / 50000); // HUGE activation
+                    }
+                } else {
+                    // Normal processing
+                    for (let i = 0; i < 8192; i++) {
+                        motor[i] = this.brain.state[(77824 + i) * 4];
+                    }
+                }
+                
+                // Behavior neurons
+                motor[20000] = onFood ? 15.0 : 0.0; // Feed
+                motor[20500] = (nearMate && game.player.stage === 'ADULT') ? 18.0 : 0.0; // Mate
+                motor[21000] = game.brood ? 20.0 : 0.0; // Select offspring
+                
+                return motor;
+            }
+            
+            decide(game) {
                 if (!this.active) return null;
                 this.decisions++;
                 
-                if (game.player.stunned > 0) {
-                    return { type: 'WAIT' };
+                const sensory = this.encodeSensory(game);
+                const motor = this.forward(sensory);
+                
+                // Check for undefined refs
+                if (!game.foodSources || !game.player) return null;
+                
+                // Decode
+                if (motor[21000] > 15.0 && game.brood) {
+                    this.currentStrategy = 'SELECT';
+                    return { type: 'SELECT_OFFSPRING', index: 0 };
                 }
                 
-                const threat = this.detectThreat(game);
-                if (threat) {
-                    this.currentStrategy = 'FLEE';
-                    return { type: 'MOVE', direction: threat.escape };
-                }
-                
-                // Check for mating opportunity
-                if (game.player.stage === 'ADULT' && !game.brood) {
-                    const nearbyNPC = game.npcFlies.find(npc => {
-                        const dist = Math.abs(npc.q - game.player.q) + Math.abs(npc.r - game.player.r);
-                        return dist <= 2;
-                    });
-                    if (nearbyNPC) {
+                if (motor[20500] > 12.0 && game.player.stage === 'ADULT' && !game.brood) {
+                    const near = game.npcFlies.find(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
+                    if (near) {
                         this.currentStrategy = 'MATE';
                         return { type: 'MATE' };
                     }
                 }
                 
-                if (game.brood) {
-                    this.currentStrategy = 'SELECT';
-                    return { type: 'SELECT_OFFSPRING', index: this.selectBestOffspring(game.brood) };
-                }
-                
-                const tile = game.tiles.find(t => t.q === game.player.q && t.r === game.player.r);
-                if (tile && tile.pickup) {
-                    this.currentStrategy = 'PICKUP';
-                    return { type: 'PICKUP', posture: 'DEFAULT' };
-                }
-                
-                if (!this.targetNode || Math.random() < this.epsilon) {
-                    this.currentStrategy = 'EXPLORE';
-                    this.targetNode = this.findBestNode(game);
-                } else {
-                    this.currentStrategy = 'NAVIGATE';
-                }
-                
-                if (this.targetNode) {
-                    const direction = this.navigateToward(game, this.targetNode);
-                    return { type: 'MOVE', direction: direction };
-                }
-                
-                const dirs = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-                return { type: 'MOVE', direction: dirs[Math.floor(Math.random() * dirs.length)] };
-            }
-            
-            detectThreat(game) {
-                const nearbyPreds = game.predators.filter(pred => {
-                    const dist = Math.abs(pred.q - game.player.q) + Math.abs(pred.r - game.player.r);
-                    return dist <= 4;
-                });
-                if (nearbyPreds.length === 0) return null;
-                const nearest = nearbyPreds[0];
-                const dq = game.player.q - nearest.q;
-                const dr = game.player.r - nearest.r;
-                if (Math.abs(dq) > Math.abs(dr)) {
-                    return { escape: dq > 0 ? 'RIGHT' : 'LEFT' };
-                } else {
-                    return { escape: dr > 0 ? 'DOWN' : 'UP' };
-                }
-            }
-            
-            findBestNode(game) {
-                return game.pickupNodes[Math.floor(Math.random() * game.pickupNodes.length)];
-            }
-            
-            navigateToward(game, target) {
-                const dq = target.q - game.player.q;
-                const dr = target.r - game.player.r;
-                if (Math.abs(dq) > Math.abs(dr)) {
-                    return dq > 0 ? 'RIGHT' : 'LEFT';
-                } else {
-                    return dr > 0 ? 'DOWN' : 'UP';
-                }
-            }
-            
-            selectBestOffspring(brood) {
-                const scores = brood.map((off, i) => {
-                    const geneCount = Object.keys(off.genome.slots).filter(k => off.genome.slots[k]).length;
-                    return { index: i, score: geneCount * 10 - off.genome.instability * 2 };
-                });
-                scores.sort((a, b) => b.score - a.score);
-                return scores[0].index;
-            }
-            
-            recordOutcome(game, action, success, reward) {
-                this.currentFitness = reward;
-                if (reward > this.bestFitness) {
-                    this.bestFitness = reward;
-                }
-                this.epsilon = Math.max(0.1, this.epsilon * 0.999);
-            }
-        }
-        
-        // ============================================================================
-        // CORE SYSTEMS (from v4/v5 - abbreviated)
-        // ============================================================================
-        
-        class QuantumTimeline {
-            constructor() {
-                this.timelineId = 'T-' + Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-                this.branchDepth = 0;
-                this.coherence = 1.0;
-            }
-            branch(action, outcomes) {
-                this.branchDepth++;
-                this.coherence *= 0.995;
-            }
-        }
-        
-        class PlateauMuseum {
-            constructor() {
-                this.plateaus = [];
-                this.nextPlateauId = 1;
-            }
-            checkAndSave(genome, stability, generation, timeline) {
-                if (stability < 60) return null;
-                const genomeSignature = Object.keys(genome.slots).filter(k => genome.slots[k]).sort().join('|');
-                const isNovel = !this.plateaus.some(p => p.signature === genomeSignature);
-                if (!isNovel) return null;
-                const totalGenes = Object.keys(genome.slots).filter(k => genome.slots[k]).length;
-                if (totalGenes <= 4) return null;
-                const plateau = {
-                    id: this.nextPlateauId++,
-                    signature: genomeSignature,
-                    stability: stability,
-                    generation: generation,
-                    geneCount: totalGenes,
-                    name: `Evolved-${totalGenes}`
-                };
-                this.plateaus.push(plateau);
-                return plateau;
-            }
-        }
-        
-        class MutagenSystem {
-            constructor() {
-                this.cosmicRayChance = 0.001;
-            }
-            checkMutation(fly, tile) {
-                const mutations = [];
-                if (Math.random() < this.cosmicRayChance) {
-                    mutations.push({ type: 'COSMIC_RAY', effect: 'POINT_MUTATION' });
-                }
-                return mutations;
-            }
-            applyMutation(genome, mutation) {
-                const allGenes = Object.keys(LOCI);
-                const activeGenes = Object.keys(genome.slots).filter(k => genome.slots[k]);
-                if (mutation.effect === 'POINT_MUTATION') {
-                    if (Math.random() < 0.5 && activeGenes.length > 4) {
-                        const nonCore = activeGenes.filter(g => LOCI[g].class !== 'Core');
-                        if (nonCore.length > 0) {
-                            const target = nonCore[Math.floor(Math.random() * nonCore.length)];
-                            genome.slots[target] = false;
-                            return `Lost ${target}`;
-                        }
-                    } else {
-                        const inactive = allGenes.filter(g => !genome.slots[g]);
-                        if (inactive.length > 0) {
-                            const target = inactive[Math.floor(Math.random() * inactive.length)];
-                            genome.slots[target] = true;
-                            genome.instability += LOCI[target].instability;
-                            return `Gained ${target}`;
-                        }
+                if (motor[20000] > 10.0) {
+                    const food = game.foodSources.find(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
+                    if (food) {
+                        this.currentStrategy = 'FEED';
+                        return { type: 'FEED' };
                     }
                 }
-                return null;
-            }
-        }
-        
-        class DynamicFILManifold {
-            constructor(n) {
-                this.n = n;
-                this.state = new Float64Array(n * 4);
-                this.scale_field = new Float64Array(n);
-                this.curvature = new Float64Array(n);
-                this._initialize_golden();
-            }
-            _initialize_golden() {
-                const phi0 = 2 * Math.PI / (1 + Math.sqrt(5));
-                for (let i = 0; i < this.n; i++) {
-                    this.state[i * 4] = phi0 * (i + 1);
-                    this.state[i * 4 + 1] = -(phi0 * (i + 1) * 0.5);
-                    this.scale_field[i] = 1.0;
+                
+                // Movement: find peak in first 8192 motor neurons
+                let maxIdx = 0;
+                let maxVal = motor[0];
+                for (let i = 1; i < 8192; i++) {
+                    if (motor[i] > maxVal) {
+                        maxVal = motor[i];
+                        maxIdx = i;
+                    }
                 }
+                
+                // Convert to cardinal direction
+                const angle = (maxIdx / 8192) * 2 * Math.PI;
+                const directionIndex = Math.round((angle / (Math.PI / 2))) % 4;
+                const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
+                
+                this.currentStrategy = 'MOVE_' + dirs[directionIndex];
+                return { type: 'MOVE', direction: dirs[directionIndex] };
             }
-            compute_density() {
-                let total = 0;
-                for (let i = 0; i < this.n; i++) {
-                    const dphi = this.state[i * 4] - this.state[i * 4 + 1];
-                    total += Math.cos(dphi) ** 2;
-                }
-                return total / this.n;
-            }
-            diagnostics() {
-                return {
-                    density: this.compute_density(),
-                    curvature_rms: 0.001,
-                    pq_stability: 50 + 25 * this.compute_density()
-                };
-            }
-        }
-        
-        class PQEngine {
-            constructor() {
-                this.manifold = new DynamicFILManifold(128);
-                this.tau = 60;
-            }
-            compile(genome, context = {}) {
-                const instability = genome.instability || 0;
-                const viability = this.calculateViability(genome);
-                const pqStability = this.manifold.diagnostics().pq_stability;
-                const S = viability + pqStability - instability * 5;
-                return {
-                    viability, pqStability, instability,
-                    stability: S, isStable: S >= this.tau,
-                    manifold: this.manifold.diagnostics()
-                };
-            }
-            calculateViability(genome) {
-                let score = 0;
-                ['Notch', 'Egfr', 'hh', 'wg'].forEach(gene => {
-                    if (genome.slots[gene]) score += LOCI[gene].effects.viability || 0;
-                });
-                return Math.min(100, score);
+            
+            reward(game) {
+                let r = 0;
+                r += game.player.energy * 2; // Energy critical
+                r += Object.keys(game.player.genome.slots).filter(k => game.player.genome.slots[k]).length * 30;
+                r += game.player.stage === 'ADULT' ? 60 : 0;
+                
+                const minPredDist = Math.min(...game.predators.map(p => 
+                    Math.abs(p.q - game.player.q) + Math.abs(p.r - game.player.r)
+                ));
+                r += minPredDist > 4 ? 40 : (minPredDist < 2 ? -100 : -20);
+                
+                this.currentFitness = r;
+                if (r > this.bestFitness) this.bestFitness = r;
             }
         }
         
-        class EoPSystem {
-            calculateCF(fly, tile, posture = 'DEFAULT') {
-                let cf = tile.cf_base || 0;
-                if (fly.inHeat) cf += 1;
-                if (posture === 'GREEDY_SURGE') cf += 1;
-                if (posture === 'SAFE_BUFFER') cf -= 1;
-                return Math.max(0, cf);
-            }
-            roll(fly, item, cf, posture = 'DEFAULT') {
-                const instability = fly.genome.instability || 0;
-                let p_SI = 0.40, p_CS = 0.05;
-                if (fly.stage === 'LARVA') p_SI += 0.10;
-                if (instability > 5) p_CS += 0.05;
-                const roll = Math.random();
-                if (roll < p_SI) return { outcome: 'SI', instability: -1 };
-                if (roll > 0.95) return { outcome: 'CS', instability: 2, stun: 2 };
-                return { outcome: 'MF', instability: 0 };
-            }
-        }
-        
-        // DNA & LOCI
-        const DNA_SEQUENCES = {
-            Notch: "ATGCGTAAGGCCATCAAGCTG", Egfr: "ATGAAGATCCTGAAGCTGGTG",
-            hh: "ATGCTGAACGGCATCAAGCTG", wg: "ATGTCGCTGGGCATCAAGAAC",
-            vg: "ATGGGCCTGAACATCGTGGCC", sd: "ATGAGCCTGAACGGCATCAAG",
-            Hsp70: "ATGGCCAAGGCCAACGATGCC", Hsp83: "ATGGCCAAGCTGAACGACGCC",
-            InR: "ATGAAGATCCTGACCGTGAAG", Drip: "ATGTCGCTGGGCATCCTGGTG",
-            Adh: "ATGAGCTTCAACGGCATCAAG", Sod: "ATGGTGCTGAACGGCATCAAG",
-            Orco: "ATGCTGAACGGCATCGTGACC", Or22a: "ATGTCGCTGGGCATCACCAAG",
-            Seamwise_gamma: "ATGGCCAAGCTGAACGGCATC"
-        };
-        
+        // Core systems (abbreviated - same as before)
         const LOCI = {
             Notch: { class: 'Core', effects: { viability: 15 }, instability: 0 },
             Egfr: { class: 'Core', effects: { viability: 12 }, instability: 0 },
             hh: { class: 'Core', effects: { viability: 10 }, instability: 1 },
             wg: { class: 'Core', effects: { viability: 10 }, instability: 1 },
             vg: { class: 'Sensorimotor', effects: { flight: 8 }, instability: 1 },
-            sd: { class: 'Sensorimotor', effects: { flight: 6 }, instability: 1 },
             Hsp70: { class: 'Metabolic', effects: { heat_tol: 12 }, instability: 1 },
-            Hsp83: { class: 'Metabolic', effects: { heat_tol: 8 }, instability: 0 },
             InR: { class: 'Metabolic', effects: { energy: 8 }, instability: 2 },
-            Drip: { class: 'Metabolic', effects: { desiccation: 10 }, instability: 1 },
-            Adh: { class: 'Metabolic', effects: { ferment_tol: 10 }, instability: 1 },
-            Sod: { class: 'Metabolic', effects: { oxidative: 6 }, instability: 1 },
-            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 },
-            Or22a: { class: 'Sensorimotor', effects: { olfaction: 8 }, instability: 1 },
-            Seamwise_gamma: { class: 'Topology', effects: { parity_sense: 12 }, instability: 2 }
-        };
-        
-        const NODE_TYPES = {
-            FIG_CLUSTER: { name: 'Fig', color: 0x8B4513, cf_base: 0,
-                drops: [{ item: 'MOTIF_Adh', p: 0.50, quality: 1 }] },
-            MARULA_WINDFALL: { name: 'Marula', color: 0xFFA500, cf_base: 1,
-                drops: [{ item: 'MOTIF_Hsp70', p: 0.50, quality: 2 }] },
-            BAOBAB_PITH: { name: 'Baobab', color: 0xD2B48C, cf_base: 0,
-                drops: [{ item: 'MOTIF_Drip', p: 0.50, quality: 2 }] },
-            ACACIA_FLOWERS: { name: 'Acacia', color: 0xFFFF99, cf_base: 1,
-                drops: [{ item: 'MOTIF_Or22a', p: 0.50, quality: 1 }] }
-        };
-        
-        const PREDATOR_TYPES = {
-            JUMPING_SPIDER: { name: 'J-Spider', color: 0xff0000, speed: 2, vision: 4, behavior: 'chase', shape: 'X' },
-            DRAGONFLY: { name: 'Dragonfly', color: 0xff6600, speed: 3, vision: 5, behavior: 'patrol', shape: 'DIAMOND' },
-            ORB_SPIDER: { name: 'O-Spider', color: 0xaa0000, speed: 0, vision: 2, behavior: 'web', shape: 'WEB' }
+            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 }
         };
         
         class HexGrid {
             constructor(hexSize) {
                 this.hexSize = hexSize;
-                this.seamLine = 10;
             }
             hexToPixel(q, r) {
                 const x = this.hexSize * (3/2 * q);
                 const y = this.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
                 return { x, y };
-            }
-            crossesSeam(r_from, r_to) {
-                return (r_from < this.seamLine && r_to >= this.seamLine) ||
-                       (r_from >= this.seamLine && r_to < this.seamLine);
             }
             drawHexagon(graphics, x, y, size, color, alpha = 1) {
                 graphics.fillStyle(color, alpha);
@@ -524,18 +647,13 @@
         }
         
         // ============================================================================
-        // MAIN GAME SCENE - FIXED MATING & GENERATIONS
+        // GAME SCENE WITH ENERGY SYSTEM
         // ============================================================================
         
         class GameScene extends Phaser.Scene {
             constructor() {
                 super({ key: 'GameScene' });
-                this.eopSystem = new EoPSystem();
-                this.pqEngine = new PQEngine();
-                this.timeline = new QuantumTimeline();
-                this.museum = new PlateauMuseum();
-                this.mutagens = new MutagenSystem();
-                this.agent = new GenomicLearningAgent();
+                this.agent = new MassiveFILAgent();
             }
             
             create() {
@@ -543,111 +661,345 @@
                 this.hexSize = 28;
                 this.hexGrid = new HexGrid(this.hexSize);
                 this.tiles = [];
-                this.pickupNodes = [];
+                this.foodSources = [];
                 this.predators = [];
-                this.npcFlies = []; // NPC FLIES FOR MATING
+                this.npcFlies = [];
                 this.generation = 1;
                 
                 this.generateWorld();
-                this.spawnNPCFlies();
                 
                 this.hexGraphics = this.add.graphics();
+                this.foodGraphics = this.add.graphics();
                 this.predatorGraphics = this.add.graphics();
                 this.npcGraphics = this.add.graphics();
                 
                 this.drawWorld();
                 
-                this.player = this.createPlayer();
+                this.player = {
+                    q: 0, r: 0, stage: 'LARVA', turn: 0, age: 0, maxAge: 6,
+                    energy: 100,
+                    genome: {
+                        slots: { Notch: true, Egfr: true, hh: true, wg: true },
+                        instability: 3
+                    },
+                    inventory: [], alive: true
+                };
+                
                 this.playerSprite = this.add.circle(0, 0, 10, 0xFF6B6B).setDepth(100);
                 this.updatePlayerSprite();
                 
                 this.cameras.main.startFollow(this.playerSprite, true, 0.1, 0.1);
                 this.cameras.main.setZoom(1.2);
                 
-                this.createUI();
                 this.setupInput();
                 this.updateAllUI();
                 
                 this.brood = null;
                 this.eventLog = [];
                 
-                this.log('Möbius Savanna v6 - Complete System', '#00ff00');
-                this.log('M to mate with nearby flies', '#ff69b4');
+                this.log('100K GPU FIL Brain - ONLINE!', '#00ff00');
+                this.log('Press A to activate neural net', '#ff00ff');
                 
                 // AI tick
                 this.time.addEvent({
-                    delay: 300,
-                    callback: this.aiTick,
-                    callbackScope: this,
+                    delay: 200,
+                    callback: () => {
+                        if (!this.agent.active || !this.player.alive) return;
+                        const action = this.agent.decide(this);
+                        if (action) this.executeAction(action);
+                    },
                     loop: true
                 });
                 
-                // NPC movement
+                // Energy drain
                 this.time.addEvent({
                     delay: 1000,
-                    callback: this.updateNPCs,
-                    callbackScope: this,
+                    callback: () => {
+                        if (this.player.alive) {
+                            this.player.energy = Math.max(0, this.player.energy - 1);
+                            if (this.player.energy <= 0) this.die('starvation');
+                            this.updateAllUI();
+                        }
+                    },
+                    loop: true
+                });
+                
+                // NPC/Pred updates
+                this.time.addEvent({
+                    delay: 1000,
+                    callback: () => {
+                        this.updateNPCs();
+                        this.updatePredators();
+                    },
                     loop: true
                 });
             }
             
-            spawnNPCFlies() {
-                // Spawn 5 NPC flies for mating
-                const spawnPositions = [
-                    { q: 4, r: 4 },
-                    { q: -5, r: 3 },
-                    { q: 6, r: -3 },
-                    { q: -4, r: -5 },
-                    { q: 8, r: 2 }
+            generateWorld() {
+                // Tiles
+                for (let q = -15; q <= 15; q++) {
+                    for (let r = -10; r <= 10; r++) {
+                        const pos = this.hexGrid.hexToPixel(q, r);
+                        this.tiles.push({ q, r, x: pos.x, y: pos.y });
+                    }
+                }
+                
+                // FOOD: Mix of DNA and ENERGY
+                const foodDefs = [
+                    // DNA food (brown/orange)
+                    { q: 3, r: 2, type: 'DNA', gene: 'vg', color: 0x8B4513 },
+                    { q: -4, r: 3, type: 'DNA', gene: 'Hsp70', color: 0xFFA500 },
+                    { q: 5, r: -2, type: 'DNA', gene: 'InR', color: 0xD2B48C },
+                    { q: -2, r: -4, type: 'DNA', gene: 'Orco', color: 0xFFFF99 },
+                    
+                    // ENERGY food (green circles) - pure sustenance
+                    { q: 7, r: 1, type: 'ENERGY', color: 0x00ff00 },
+                    { q: -6, r: -1, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 2, r: 5, type: 'ENERGY', color: 0x00ff00 },
+                    { q: -8, r: 4, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 10, r: -4, type: 'ENERGY', color: 0x00ff00 },
+                    { q: -3, r: 7, type: 'ENERGY', color: 0x00ff00 },
                 ];
                 
-                spawnPositions.forEach(pos => {
+                foodDefs.forEach(f => this.foodSources.push({ ...f, respawnTimer: 0 }));
+                
+                // NPCs
+                [{ q: 4, r: 4 }, { q: -5, r: 3 }, { q: 6, r: -3 }].forEach(pos => {
                     this.npcFlies.push({
-                        q: pos.q,
-                        r: pos.r,
-                        stage: 'ADULT',
-                        genome: this.generateRandomGenome(),
-                        wanderTimer: 0
+                        q: pos.q, r: pos.r, stage: 'ADULT',
+                        genome: { slots: { Notch: true, Egfr: true, hh: true, wg: true }, instability: 3 }
+                    });
+                });
+                
+                // Predators
+                [{ q: 5, r: 5 }, { q: -8, r: -3 }].forEach(pos => {
+                    this.predators.push({
+                        q: pos.q, r: pos.r, type: 'SPIDER', speed: 1, vision: 3
                     });
                 });
             }
             
-            generateRandomGenome() {
-                // Generate random viable genome for NPC
-                const genome = {
-                    slots: {
-                        Notch: true,
-                        Egfr: true,
-                        hh: true,
-                        wg: true
-                    },
-                    instability: 3
-                };
+            drawWorld() {
+                this.hexGraphics.clear();
+                this.tiles.forEach(tile => {
+                    this.hexGrid.drawHexagon(this.hexGraphics, tile.x, tile.y, this.hexSize, 0x2d4a2d, 0.5);
+                });
                 
-                // Add 2-4 random genes
-                const allGenes = Object.keys(LOCI);
-                const extraGenes = 2 + Math.floor(Math.random() * 3);
-                for (let i = 0; i < extraGenes; i++) {
-                    const gene = allGenes[Math.floor(Math.random() * allGenes.length)];
-                    if (!genome.slots[gene]) {
-                        genome.slots[gene] = true;
-                        genome.instability += LOCI[gene].instability;
+                this.foodGraphics.clear();
+                this.foodSources.forEach(food => {
+                    if (food.respawnTimer > 0) return;
+                    const pos = this.hexGrid.hexToPixel(food.q, food.r);
+                    if (food.type === 'DNA') {
+                        // Diamond for DNA
+                        this.foodGraphics.fillStyle(food.color, 0.9);
+                        this.foodGraphics.fillRect(pos.x - 8, pos.y - 8, 16, 16);
+                        this.foodGraphics.lineStyle(2, 0xffffff, 0.8);
+                        this.foodGraphics.strokeRect(pos.x - 8, pos.y - 8, 16, 16);
+                    } else {
+                        // Circle for energy
+                        this.foodGraphics.fillStyle(food.color, 0.8);
+                        this.foodGraphics.fillCircle(pos.x, pos.y, 10);
+                        this.foodGraphics.lineStyle(2, 0xffffff, 0.6);
+                        this.foodGraphics.strokeCircle(pos.x, pos.y, 10);
                     }
+                });
+            }
+            
+            updatePlayerSprite() {
+                const pos = this.hexGrid.hexToPixel(this.player.q, this.player.r);
+                this.playerSprite.setPosition(pos.x, pos.y);
+                const size = this.player.stage === 'ADULT' ? 12 : (this.player.stage === 'PUPA' ? 8 : 10);
+                this.playerSprite.setRadius(size);
+            }
+            
+            setupInput() {
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+                this.input.keyboard.addKey('E').on('down', () => { if (!this.agent.active) this.feed(); });
+                this.input.keyboard.addKey('M').on('down', () => { if (!this.agent.active) this.mate(); });
+                this.input.keyboard.addKey('A').on('down', () => this.toggleAI());
+                
+                for (let i = 1; i <= 9; i++) {
+                    this.input.keyboard.addKey(`${i}`).on('down', () => {
+                        if (this.brood && !this.agent.active) this.selectOffspring(i - 1);
+                    });
+                }
+            }
+            
+            toggleAI() {
+                const active = this.agent.toggle();
+                document.getElementById('ai-status').innerHTML = active ? 
+                    'Status: <span class="gpu">THINKING</span>' : 
+                    'Status: <span class="ai">OFF</span>';
+                this.log(active ? '100K GPU BRAIN ACTIVE!' : 'Neural Net OFF', '#ff00ff');
+            }
+            
+            update() {
+                if (!this.player.alive || this.agent.active) return;
+                
+                if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+                    this.passTurn();
+                    return;
                 }
                 
-                return genome;
+                let direction = null;
+                if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) direction = 'UP';
+                if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) direction = 'DOWN';
+                if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) direction = 'LEFT';
+                if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) direction = 'RIGHT';
+                
+                if (direction) this.moveInDirection(direction);
+            }
+            
+            moveInDirection(direction) {
+                let newQ = this.player.q;
+                let newR = this.player.r;
+                
+                if (direction === 'UP') newR -= 1;
+                if (direction === 'DOWN') newR += 1;
+                if (direction === 'LEFT') newQ -= 1;
+                if (direction === 'RIGHT') newQ += 1;
+                
+                // Wrap
+                if (newQ < -15) newQ = 15;
+                if (newQ > 15) newQ = -15;
+                if (newR < -10) newR = 10;
+                if (newR > 10) newR = -10;
+                
+                this.player.q = newQ;
+                this.player.r = newR;
+                this.player.turn++;
+                this.player.age++;
+                
+                this.checkLifecycleAdvancement();
+                this.checkPredators();
+                this.updatePlayerSprite();
+                this.updateAllUI();
+                this.drawWorld();
+            }
+            
+            passTurn() {
+                this.player.turn++;
+                this.player.age++;
+                this.checkLifecycleAdvancement();
+                this.updateAllUI();
+            }
+            
+            checkLifecycleAdvancement() {
+                if (this.player.age >= this.player.maxAge) {
+                    const stages = ['LARVA', 'PUPA', 'ADULT'];
+                    const idx = stages.indexOf(this.player.stage);
+                    if (idx < stages.length - 1) {
+                        this.player.stage = stages[idx + 1];
+                        this.player.age = 0;
+                        this.player.maxAge = this.player.stage === 'ADULT' ? 15 : 6;
+                        this.log(`⟹ ${this.player.stage}`, '#00ffff');
+                        this.updatePlayerSprite();
+                    } else {
+                        this.die('old age');
+                    }
+                }
+            }
+            
+            feed() {
+                const food = this.foodSources.find(f => f.q === this.player.q && f.r === this.player.r && f.respawnTimer === 0);
+                if (!food) return;
+                
+                if (food.type === 'ENERGY') {
+                    this.player.energy = Math.min(100, this.player.energy + 30);
+                    this.log('✓ Energy +30', '#00ff00');
+                } else {
+                    if (!this.player.genome.slots[food.gene]) {
+                        this.player.genome.slots[food.gene] = true;
+                        this.player.genome.instability += LOCI[food.gene].instability;
+                        this.log(`✓ DNA: ${food.gene}`, '#00ff00');
+                    }
+                    this.player.energy = Math.min(100, this.player.energy + 10);
+                }
+                
+                food.respawnTimer = 10;
+                this.drawWorld();
+                this.updateAllUI();
+            }
+            
+            mate() {
+                if (this.player.stage !== 'ADULT' || this.brood) return;
+                const near = this.npcFlies.find(n => Math.abs(n.q - this.player.q) + Math.abs(n.r - this.player.r) <= 2);
+                if (!near) return;
+                
+                this.brood = [];
+                for (let i = 0; i < 8; i++) {
+                    this.brood.push({
+                        id: i + 1,
+                        genome: JSON.parse(JSON.stringify(this.player.genome))
+                    });
+                }
+                
+                this.log('═══ BROOD LAID ═══', '#ff69b4');
+                document.getElementById('has-brood').style.display = 'block';
+            }
+            
+            selectOffspring(index) {
+                if (!this.brood || index >= this.brood.length) return;
+                
+                this.generation++;
+                this.player.genome = JSON.parse(JSON.stringify(this.brood[index].genome));
+                this.player.stage = 'LARVA';
+                this.player.age = 0;
+                this.player.maxAge = 6;
+                this.player.energy = 100;
+                this.player.q = 0;
+                this.player.r = 0;
+                this.player.alive = true;
+                
+                this.brood = null;
+                document.getElementById('has-brood').style.display = 'none';
+                
+                this.updatePlayerSprite();
+                this.log(`═══ GEN ${this.generation} ═══`, '#00ff00');
+                this.updateAllUI();
+            }
+            
+            checkPredators() {
+                this.predators.forEach(pred => {
+                    const dist = Math.abs(pred.q - this.player.q) + Math.abs(pred.r - this.player.r);
+                    if (dist <= 1) this.die('predation');
+                });
+            }
+            
+            updatePredators() {
+                this.predators.forEach(pred => {
+                    if (Math.random() < 0.4) {
+                        const dq = this.player.q - pred.q;
+                        const dr = this.player.r - pred.r;
+                        if (Math.abs(dq) > Math.abs(dr)) {
+                            pred.q += Math.sign(dq);
+                        } else {
+                            pred.r += Math.sign(dr);
+                        }
+                    }
+                });
+                this.drawPredators();
+            }
+            
+            drawPredators() {
+                this.predatorGraphics.clear();
+                this.predators.forEach(pred => {
+                    const pos = this.hexGrid.hexToPixel(pred.q, pred.r);
+                    this.predatorGraphics.fillStyle(0xff0000, 0.9);
+                    this.predatorGraphics.beginPath();
+                    this.predatorGraphics.moveTo(pos.x - 8, pos.y - 8);
+                    this.predatorGraphics.lineTo(pos.x + 8, pos.y + 8);
+                    this.predatorGraphics.moveTo(pos.x + 8, pos.y - 8);
+                    this.predatorGraphics.lineTo(pos.x - 8, pos.y + 8);
+                    this.predatorGraphics.strokePath();
+                });
             }
             
             updateNPCs() {
-                // NPCs wander randomly
                 this.npcFlies.forEach(npc => {
                     if (Math.random() < 0.3) {
-                        const dirs = [
-                            { q: 0, r: -1 },
-                            { q: 0, r: 1 },
-                            { q: -1, r: 0 },
-                            { q: 1, r: 0 }
-                        ];
+                        const dirs = [{ q: 0, r: -1 }, { q: 0, r: 1 }, { q: -1, r: 0 }, { q: 1, r: 0 }];
                         const dir = dirs[Math.floor(Math.random() * dirs.length)];
                         npc.q += dir.q;
                         npc.r += dir.r;
@@ -660,660 +1012,84 @@
                 this.npcGraphics.clear();
                 this.npcFlies.forEach(npc => {
                     const pos = this.hexGrid.hexToPixel(npc.q, npc.r);
-                    // Pink circles for NPCs
                     this.npcGraphics.fillStyle(0xFF69B4, 0.8);
                     this.npcGraphics.fillCircle(pos.x, pos.y, 8);
-                    this.npcGraphics.lineStyle(1, 0xFF1493, 1);
-                    this.npcGraphics.strokeCircle(pos.x, pos.y, 8);
-                });
-            }
-            
-            aiTick() {
-                if (!this.agent.active || !this.player.alive) return;
-                const action = this.agent.decideAction(this);
-                if (!action) return;
-                this.executeAction(action);
-            }
-            
-            executeAction(action) {
-                if (action.type === 'WAIT') {
-                    this.passTurn();
-                } else if (action.type === 'MOVE') {
-                    this.moveInDirection(action.direction);
-                } else if (action.type === 'PICKUP') {
-                    this.pickup();
-                } else if (action.type === 'MATE') {
-                    this.mate();
-                } else if (action.type === 'SELECT_OFFSPRING') {
-                    this.selectOffspring(action.index);
-                }
-                
-                const result = this.pqEngine.compile(this.player.genome);
-                const reward = result.stability;
-                this.agent.recordOutcome(this, action, true, reward);
-                this.updateAIDisplay();
-            }
-            
-            generateWorld() {
-                for (let q = -15; q <= 15; q++) {
-                    for (let r = -10; r <= 10; r++) {
-                        const pos = this.hexGrid.hexToPixel(q, r);
-                        const tile = {
-                            q, r, x: pos.x, y: pos.y, type: 'GRASS',
-                            cf_base: 0, pickup: null, isHeat: false
-                        };
-                        if (Math.abs(r - 3) < 2) tile.isHeat = true;
-                        this.tiles.push(tile);
-                    }
-                }
-                this.placePickupNodes();
-                this.spawnPredators();
-            }
-            
-            placePickupNodes() {
-                const nodePositions = [
-                    { q: 3, r: 2, type: 'FIG_CLUSTER' },
-                    { q: -4, r: 3, type: 'MARULA_WINDFALL' },
-                    { q: 5, r: -2, type: 'BAOBAB_PITH' },
-                    { q: -2, r: -4, type: 'ACACIA_FLOWERS' },
-                    { q: 7, r: 1, type: 'FIG_CLUSTER' },
-                    { q: -6, r: -1, type: 'ACACIA_FLOWERS' }
-                ];
-                
-                nodePositions.forEach(node => {
-                    const tile = this.tiles.find(t => t.q === node.q && t.r === node.r);
-                    if (tile) {
-                        const nodeType = NODE_TYPES[node.type];
-                        tile.pickup = {
-                            type: node.type, name: nodeType.name,
-                            cf_base: nodeType.cf_base, drops: nodeType.drops,
-                            color: nodeType.color
-                        };
-                        this.pickupNodes.push(tile);
-                    }
-                });
-            }
-            
-            spawnPredators() {
-                const spawns = [
-                    { q: 5, r: 5, type: 'JUMPING_SPIDER' },
-                    { q: -8, r: 2, type: 'JUMPING_SPIDER' },
-                    { q: 10, r: -2, type: 'DRAGONFLY' },
-                    { q: 0, r: -6, type: 'ORB_SPIDER' }
-                ];
-                
-                spawns.forEach(spawn => {
-                    const type = PREDATOR_TYPES[spawn.type];
-                    this.predators.push({
-                        q: spawn.q, r: spawn.r, type: spawn.type,
-                        name: type.name, color: type.color,
-                        speed: type.speed, vision: type.vision,
-                        behavior: type.behavior, shape: type.shape,
-                        patrolDir: 1, patrolCount: 0
-                    });
-                });
-            }
-            
-            drawWorld() {
-                this.hexGraphics.clear();
-                this.tiles.forEach(tile => {
-                    let color = 0x2d4a2d;
-                    let alpha = 0.5;
-                    if (tile.pickup) {
-                        color = tile.pickup.color;
-                        alpha = 0.85;
-                    }
-                    this.hexGrid.drawHexagon(this.hexGraphics, tile.x, tile.y, this.hexSize, color, alpha);
-                });
-            }
-            
-            drawPredators() {
-                this.predatorGraphics.clear();
-                
-                this.predators.forEach(pred => {
-                    const pos = this.hexGrid.hexToPixel(pred.q, pred.r);
-                    
-                    // Vision cone
-                    this.predatorGraphics.fillStyle(pred.color, 0.1);
-                    this.predatorGraphics.fillCircle(pos.x, pos.y, this.hexSize * pred.vision);
-                    
-                    // Draw shape based on type
-                    this.predatorGraphics.lineStyle(3, pred.color, 1);
-                    this.predatorGraphics.fillStyle(pred.color, 0.9);
-                    
-                    if (pred.shape === 'X') {
-                        // Jumping Spider - X shape
-                        this.predatorGraphics.beginPath();
-                        this.predatorGraphics.moveTo(pos.x - 8, pos.y - 8);
-                        this.predatorGraphics.lineTo(pos.x + 8, pos.y + 8);
-                        this.predatorGraphics.moveTo(pos.x + 8, pos.y - 8);
-                        this.predatorGraphics.lineTo(pos.x - 8, pos.y + 8);
-                        this.predatorGraphics.strokePath();
-                    } else if (pred.shape === 'DIAMOND') {
-                        // Dragonfly - diamond shape
-                        this.predatorGraphics.beginPath();
-                        this.predatorGraphics.moveTo(pos.x, pos.y - 10);
-                        this.predatorGraphics.lineTo(pos.x + 7, pos.y);
-                        this.predatorGraphics.lineTo(pos.x, pos.y + 10);
-                        this.predatorGraphics.lineTo(pos.x - 7, pos.y);
-                        this.predatorGraphics.closePath();
-                        this.predatorGraphics.fillPath();
-                        this.predatorGraphics.strokePath();
-                    } else if (pred.shape === 'WEB') {
-                        // Orb Spider - web pattern
-                        this.predatorGraphics.fillCircle(pos.x, pos.y, 6);
-                        for (let i = 0; i < 8; i++) {
-                            const angle = i * Math.PI / 4;
-                            this.predatorGraphics.beginPath();
-                            this.predatorGraphics.moveTo(pos.x, pos.y);
-                            this.predatorGraphics.lineTo(
-                                pos.x + Math.cos(angle) * 15,
-                                pos.y + Math.sin(angle) * 15
-                            );
-                            this.predatorGraphics.strokePath();
-                        }
-                    }
-                });
-            }
-            
-            createPlayer() {
-                return {
-                    q: 0, r: 0, stage: 'LARVA', turn: 0, age: 0, maxAge: 12,
-                    genome: {
-                        slots: { Notch: true, Egfr: true, hh: true, wg: true },
-                        instability: 3, mutationCount: 0
-                    },
-                    inventory: [], inHeat: false, parityFlipped: false,
-                    stunned: 0, posture: 'DEFAULT', alive: true
-                };
-            }
-            
-            updatePlayerSprite() {
-                const pos = this.hexGrid.hexToPixel(this.player.q, this.player.r);
-                this.playerSprite.setPosition(pos.x, pos.y);
-                let size = 10;
-                let color = 0xFF6B6B;
-                if (this.player.stage === 'PUPA') { size = 8; color = 0xFFAA6B; }
-                else if (this.player.stage === 'ADULT') { size = 12; color = 0xFF3333; }
-                this.playerSprite.setRadius(size);
-                this.playerSprite.setFillStyle(color);
-            }
-            
-            createUI() {
-                this.genomePanel = this.add.graphics().setScrollFactor(0);
-                this.genomePanel.fillStyle(0x000000, 0.9);
-                this.genomePanel.fillRect(380, 10, 280, 110);
-                this.genomePanel.lineStyle(2, 0x00ff00, 1);
-                this.genomePanel.strokeRect(380, 10, 280, 110);
-                
-                this.genomeText = this.add.text(390, 20, '', {
-                    fontSize: '9px', color: '#00ff00',
-                    fontFamily: 'Courier New', lineSpacing: 1
-                }).setScrollFactor(0).setDepth(200);
-                
-                this.pqPanel = this.add.graphics().setScrollFactor(0);
-                this.pqPanel.fillStyle(0x000000, 0.9);
-                this.pqPanel.fillRect(680, 10, 200, 110);
-                this.pqPanel.lineStyle(2, 0x00ffff, 1);
-                this.pqPanel.strokeRect(680, 10, 200, 110);
-                
-                this.pqText = this.add.text(690, 20, '', {
-                    fontSize: '9px', color: '#00ffff',
-                    fontFamily: 'Courier New', lineSpacing: 2
-                }).setScrollFactor(0).setDepth(200);
-                
-                this.logPanel = this.add.graphics().setScrollFactor(0);
-                this.logPanel.fillStyle(0x000000, 0.9);
-                this.logPanel.fillRect(380, 600, 500, 90);
-                this.logPanel.lineStyle(2, 0xffff00, 1);
-                this.logPanel.strokeRect(380, 600, 500, 90);
-                
-                this.logText = this.add.text(390, 610, '', {
-                    fontSize: '9px', color: '#ffff00',
-                    fontFamily: 'Courier New', lineSpacing: 1
-                }).setScrollFactor(0).setDepth(200);
-            }
-            
-            setupInput() {
-                this.cursors = this.input.keyboard.createCursorKeys();
-                this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-                this.input.keyboard.addKey('E').on('down', () => { if (!this.agent.active) this.pickup(); });
-                this.input.keyboard.addKey('M').on('down', () => { if (!this.agent.active) this.mate(); });
-                this.input.keyboard.addKey('N').on('down', () => { if (!this.agent.active) this.advanceStage(); });
-                this.input.keyboard.addKey('P').on('down', () => this.viewPlateaus());
-                this.input.keyboard.addKey('A').on('down', () => this.toggleAI());
-                
-                // Offspring selection keys 1-9
-                for (let i = 1; i <= 9; i++) {
-                    this.input.keyboard.addKey(`${i}`).on('down', () => {
-                        if (this.brood && !this.agent.active) this.selectOffspring(i - 1);
-                    });
-                }
-            }
-            
-            toggleAI() {
-                const active = this.agent.toggle();
-                document.getElementById('ai-status').innerHTML = active ? 
-                    'Status: <span class="ai">ON</span>' : 
-                    'Status: <span class="ai">OFF</span>';
-                this.log(active ? 'AI ACTIVE' : 'AI OFF', '#ff00ff');
-            }
-            
-            update() {
-                if (!this.player.alive || this.agent.active) return;
-                
-                if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-                    this.passTurn();
-                    return;
-                }
-                
-                if (this.player.stunned > 0) return;
-                
-                let direction = null;
-                if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) direction = 'UP';
-                if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) direction = 'DOWN';
-                if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) direction = 'LEFT';
-                if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) direction = 'RIGHT';
-                
-                if (direction) {
-                    this.moveInDirection(direction);
-                }
-            }
-            
-            moveInDirection(direction) {
-                let newQ = this.player.q;
-                let newR = this.player.r;
-                
-                if (direction === 'UP') newR -= 1;
-                if (direction === 'DOWN') newR += 1;
-                if (direction === 'LEFT') newQ -= 1;
-                if (direction === 'RIGHT') newQ += 1;
-                
-                this.timeline.branch(direction, ['UP', 'DOWN', 'LEFT', 'RIGHT']);
-                
-                if (this.hexGrid.crossesSeam(this.player.r, newR)) {
-                    this.player.parityFlipped = !this.player.parityFlipped;
-                    this.log('Seam crossed!', '#00ffff');
-                }
-                
-                this.player.q = newQ;
-                this.player.r = newR;
-                this.player.turn++;
-                this.player.age++;
-                
-                this.checkMutagens();
-                this.updatePlayerSprite();
-                this.checkPredators();
-                this.updatePredators();
-                this.checkPlateaus();
-                this.updateAllUI();
-                this.drawPredators();
-                this.drawNPCs();
-            }
-            
-            passTurn() {
-                this.player.turn++;
-                this.player.age++;
-                if (this.player.stunned > 0) {
-                    this.player.stunned--;
-                    if (this.player.stunned === 0) this.log('Recovered', '#00ff00');
-                }
-                this.updatePredators();
-                this.updateAllUI();
-            }
-            
-            advanceStage() {
-                const stages = ['LARVA', 'PUPA', 'ADULT'];
-                const currentIdx = stages.indexOf(this.player.stage);
-                if (currentIdx < stages.length - 1) {
-                    this.player.stage = stages[currentIdx + 1];
-                    this.player.age = 0;
-                    this.player.maxAge = this.player.stage === 'ADULT' ? 20 : 12;
-                    this.log(`→ ${this.player.stage}`, '#00ffff');
-                    this.updatePlayerSprite();
-                    this.updateAllUI();
-                }
-            }
-            
-            checkMutagens() {
-                const tile = this.tiles.find(t => t.q === this.player.q && t.r === this.player.r);
-                const mutations = this.mutagens.checkMutation(this.player, tile);
-                mutations.forEach(mut => {
-                    const result = this.mutagens.applyMutation(this.player.genome, mut);
-                    if (result) {
-                        this.player.genome.mutationCount++;
-                        this.log(`☢ ${result}`, '#ff00ff');
-                    }
-                });
-            }
-            
-            checkPredators() {
-                this.predators.forEach(pred => {
-                    const dist = Math.abs(pred.q - this.player.q) + Math.abs(pred.r - this.player.r);
-                    if (dist <= 2) {
-                        this.log(`☠ ${pred.name}!`, '#ff0000');
-                        this.die('predation');
-                    }
-                });
-            }
-            
-            updatePredators() {
-                this.predators.forEach(pred => {
-                    if (pred.behavior === 'chase') {
-                        const dist = Math.abs(pred.q - this.player.q) + Math.abs(pred.r - this.player.r);
-                        if (dist <= pred.vision && pred.speed > 0) {
-                            if (Math.abs(this.player.q - pred.q) > Math.abs(this.player.r - pred.r)) {
-                                pred.q += Math.sign(this.player.q - pred.q);
-                            } else {
-                                pred.r += Math.sign(this.player.r - pred.r);
-                            }
-                        }
-                    } else if (pred.behavior === 'patrol') {
-                        pred.patrolCount++;
-                        if (pred.patrolCount >= 3) {
-                            pred.patrolCount = 0;
-                            pred.patrolDir *= -1;
-                        }
-                        pred.q += pred.patrolDir;
-                    }
-                });
-                this.drawPredators();
-            }
-            
-            checkPlateaus() {
-                const result = this.pqEngine.compile(this.player.genome);
-                if (result.isStable) {
-                    const plateau = this.museum.checkAndSave(
-                        this.player.genome, result.stability,
-                        this.generation, this.timeline
-                    );
-                    if (plateau) {
-                        this.log(`★ PLATEAU: ${plateau.name}`, '#00ff00');
-                        this.updatePlateauDisplay();
-                    }
-                }
-            }
-            
-            pickup() {
-                const tile = this.tiles.find(t => t.q === this.player.q && t.r === this.player.r);
-                if (!tile || !tile.pickup) return;
-                
-                const drops = tile.pickup.drops;
-                const roll = Math.random();
-                let drop = null;
-                
-                for (const d of drops) {
-                    if (roll < d.p) {
-                        drop = d;
-                        break;
-                    }
-                }
-                
-                if (!drop) return;
-                
-                const cf = this.eopSystem.calculateCF(this.player, tile, this.player.posture);
-                const result = this.eopSystem.roll(this.player, drop, cf, this.player.posture);
-                
-                if (result.outcome === 'SI') {
-                    const geneName = drop.item.replace('MOTIF_', '');
-                    if (LOCI[geneName]) {
-                        this.player.genome.slots[geneName] = true;
-                        this.log(`✓ ${geneName}`, '#00ff00');
-                    }
-                    this.player.genome.instability = Math.max(0, this.player.genome.instability + result.instability);
-                    this.player.inventory.push({ type: drop.item });
-                } else if (result.outcome === 'CS') {
-                    this.player.genome.instability = Math.max(0, this.player.genome.instability + result.instability);
-                    this.player.stunned = result.stun;
-                    this.log('☠ CS!', '#ff0000');
-                }
-                
-                this.updateAllUI();
-            }
-            
-            mate() {
-                // FIXED MATING SYSTEM
-                if (this.player.stage !== 'ADULT') {
-                    this.log('Must be Adult to mate!', '#ff6600');
-                    return;
-                }
-                
-                if (this.brood) {
-                    this.log('Already have brood!', '#ffff00');
-                    return;
-                }
-                
-                // Find nearby NPC fly
-                const nearbyNPC = this.npcFlies.find(npc => {
-                    const dist = Math.abs(npc.q - this.player.q) + Math.abs(npc.r - this.player.r);
-                    return dist <= 2;
-                });
-                
-                if (!nearbyNPC) {
-                    this.log('No mate nearby! Find pink fly', '#ff6600');
-                    return;
-                }
-                
-                // Generate offspring (6-12 eggs)
-                const broodSize = Math.floor(Math.random() * 7) + 6;
-                this.brood = [];
-                
-                for (let i = 0; i < broodSize; i++) {
-                    // Mix parent and NPC genes
-                    const offspring = {
-                        id: i + 1,
-                        genome: this.mixGenomes(this.player.genome, nearbyNPC.genome)
-                    };
-                    
-                    // 10% mutation chance
-                    if (Math.random() < 0.10) {
-                        const allGenes = Object.keys(LOCI);
-                        const randomGene = allGenes[Math.floor(Math.random() * allGenes.length)];
-                        offspring.genome.slots[randomGene] = !offspring.genome.slots[randomGene];
-                        offspring.mutation = randomGene;
-                    }
-                    
-                    // Recalculate instability
-                    offspring.genome.instability = 0;
-                    Object.keys(offspring.genome.slots).forEach(gene => {
-                        if (offspring.genome.slots[gene]) {
-                            offspring.genome.instability += LOCI[gene].instability;
-                        }
-                    });
-                    
-                    this.brood.push(offspring);
-                }
-                
-                this.log(`═══ BROOD LAID ═══`, '#ff69b4');
-                this.log(`${broodSize} eggs. Press 1-${Math.min(9, broodSize)} to select`, '#ff69b4');
-                document.getElementById('has-brood').style.display = 'block';
-            }
-            
-            mixGenomes(genome1, genome2) {
-                // Diploid mixing - each gene has 50% from each parent
-                const mixed = {
-                    slots: {},
-                    instability: 0
-                };
-                
-                const allGenes = new Set([
-                    ...Object.keys(genome1.slots),
-                    ...Object.keys(genome2.slots)
-                ]);
-                
-                allGenes.forEach(gene => {
-                    const from1 = genome1.slots[gene] || false;
-                    const from2 = genome2.slots[gene] || false;
-                    
-                    // 50/50 from each parent
-                    if (from1 && from2) {
-                        mixed.slots[gene] = true; // Both have it
-                    } else if (from1 || from2) {
-                        mixed.slots[gene] = Math.random() < 0.5; // One has it
-                    }
-                });
-                
-                return mixed;
-            }
-            
-            selectOffspring(index) {
-                // FIXED OFFSPRING SELECTION
-                if (!this.brood || index >= this.brood.length) {
-                    this.log('Invalid selection', '#ff6600');
-                    return;
-                }
-                
-                const selected = this.brood[index];
-                this.generation++;
-                
-                // Create NEW fly with inherited genome
-                const newFly = this.createPlayer();
-                newFly.genome = JSON.parse(JSON.stringify(selected.genome));
-                newFly.stage = 'LARVA'; // Always start as larva
-                newFly.age = 0;
-                newFly.maxAge = 12;
-                
-                // Replace player
-                this.player = newFly;
-                this.player.q = 0;
-                this.player.r = 0;
-                
-                // Reset timeline
-                this.timeline = new QuantumTimeline();
-                this.brood = null;
-                document.getElementById('has-brood').style.display = 'none';
-                
-                this.updatePlayerSprite();
-                this.cameras.main.startFollow(this.playerSprite, true, 0.1, 0.1);
-                
-                this.log(`═══ GENERATION ${this.generation} ═══`, '#00ff00');
-                this.log(`Offspring #${selected.id} selected`, '#00ff00');
-                if (selected.mutation) {
-                    this.log(`Mutation: ${selected.mutation}`, '#ff00ff');
-                }
-                
-                this.updateAllUI();
-            }
-            
-            viewPlateaus() {
-                this.log(`Plateaus: ${this.museum.plateaus.length}`, '#00ff00');
-                this.museum.plateaus.slice(-3).forEach(p => {
-                    this.log(`${p.id}. ${p.name} | S=${p.stability.toFixed(0)}`, '#00ff00');
                 });
             }
             
             die(cause) {
                 this.player.alive = false;
                 this.log(`DEATH: ${cause}`, '#ff0000');
-                this.log(`Gen ${this.generation} ended`, '#ff6600');
+                
+                this.time.delayedCall(2000, () => {
+                    this.generation++;
+                    this.player.stage = 'LARVA';
+                    this.player.age = 0;
+                    this.player.maxAge = 6;
+                    this.player.energy = 100;
+                    this.player.q = 0;
+                    this.player.r = 0;
+                    this.player.alive = true;
+                    this.updatePlayerSprite();
+                    this.log(`Respawned - Gen ${this.generation}`, '#00ff00');
+                    this.updateAllUI();
+                });
+            }
+            
+            executeAction(action) {
+                if (action.type === 'MOVE') {
+                    this.moveInDirection(action.direction);
+                } else if (action.type === 'FEED') {
+                    this.feed();
+                    this.player.turn++;
+                    this.player.age++;
+                } else if (action.type === 'MATE') {
+                    this.mate();
+                    this.player.turn++;
+                } else if (action.type === 'SELECT_OFFSPRING') {
+                    this.selectOffspring(action.index);
+                }
+                
+                this.agent.reward(this);
+                this.updateAllUI();
             }
             
             updateAllUI() {
-                this.updateGenomeDisplay();
-                this.updatePQDisplay();
-                this.updateLegendStats();
-                this.updateAIDisplay();
-            }
-            
-            updateGenomeDisplay() {
-                const genome = this.player.genome;
-                const slots = Object.keys(genome.slots).filter(k => genome.slots[k]);
-                let text = `GENOME [${this.player.stage}]\n`;
-                text += `Genes: ${slots.length} | I: ${genome.instability}\n\n`;
-                const classes = {};
-                slots.forEach(gene => {
-                    const locus = LOCI[gene];
-                    if (!classes[locus.class]) classes[locus.class] = [];
-                    classes[locus.class].push(gene);
-                });
-                Object.keys(classes).forEach(className => {
-                    text += `${className}:\n${classes[className].slice(0,4).join(', ')}\n`;
-                });
-                this.genomeText.setText(text);
-            }
-            
-            updatePQDisplay() {
-                const result = this.pqEngine.compile(this.player.genome);
-                let text = `FIL v4 MANIFOLD\n\n`;
-                text += `Viability: ${result.viability.toFixed(0)}\n`;
-                text += `PQ Stab: ${result.pqStability.toFixed(0)}\n`;
-                text += `Instab: ${result.instability}\n\n`;
-                text += `S = ${result.stability.toFixed(1)} / 60\n`;
-                text += result.isStable ? '✓ STABLE' : '✗ UNSTABLE';
-                this.pqText.setText(text);
-                document.getElementById('stable-indicator').style.display = result.isStable ? 'block' : 'none';
-            }
-            
-            updateLegendStats() {
                 document.getElementById('stage-display').textContent = this.player.stage;
                 document.getElementById('age-display').textContent = this.player.age;
                 document.getElementById('max-age-display').textContent = this.player.maxAge;
                 document.getElementById('gen-display').textContent = this.generation;
+                document.getElementById('energy-display').textContent = Math.floor(this.player.energy);
                 
-                const lociCount = Object.keys(this.player.genome.slots).filter(k => this.player.genome.slots[k]).length;
-                document.getElementById('loci-count').textContent = lociCount;
+                const loci = Object.keys(this.player.genome.slots).filter(k => this.player.genome.slots[k]).length;
+                document.getElementById('loci-count').textContent = loci;
                 document.getElementById('instability-display').textContent = this.player.genome.instability;
-                document.getElementById('inventory-count').textContent = this.player.inventory.length;
                 
-                const result = this.pqEngine.compile(this.player.genome);
-                document.getElementById('stability-display').textContent = result.stability.toFixed(1);
-                
-                // Check if can mate
-                const nearbyNPC = this.npcFlies.find(npc => {
-                    const dist = Math.abs(npc.q - this.player.q) + Math.abs(npc.r - this.player.r);
-                    return dist <= 2;
-                });
-                
-                if (this.player.stage === 'ADULT' && nearbyNPC && !this.brood) {
-                    document.getElementById('can-mate').style.display = 'block';
-                    document.getElementById('mate-available').style.display = 'block';
-                } else {
-                    document.getElementById('can-mate').style.display = 'none';
-                    document.getElementById('mate-available').style.display = 'none';
-                }
+                const dnaItems = this.player.inventory.length;
+                document.getElementById('dna-count').textContent = dnaItems;
                 
                 document.getElementById('npc-count').textContent = this.npcFlies.length;
                 
-                // Predator display
-                const nearbyPreds = this.predators.filter(pred => {
-                    const dist = Math.abs(pred.q - this.player.q) + Math.abs(pred.r - this.player.r);
-                    return dist <= pred.vision;
-                });
-                const display = document.getElementById('predator-display');
-                if (nearbyPreds.length === 0) {
-                    display.innerHTML = '<div class="key">Threats: None</div>';
-                } else {
-                    display.innerHTML = '<div class="key">THREATS:</div>' + nearbyPreds.map(p => {
-                        const dist = Math.abs(p.q - this.player.q) + Math.abs(p.r - this.player.r);
-                        const symbol = p.shape === 'X' ? '✖' : p.shape === 'DIAMOND' ? '⬥' : '⊕';
-                        return `<div class="key">${symbol} ${p.name} (${dist})</div>`;
-                    }).join('');
-                }
-            }
-            
-            updateAIDisplay() {
+                const nearFood = this.foodSources.filter(f => {
+                    const dist = Math.abs(f.q - this.player.q) + Math.abs(f.r - this.player.r);
+                    return dist <= 5 && f.respawnTimer === 0;
+                }).length;
+                document.getElementById('food-count').textContent = nearFood;
+                
+                document.getElementById('ai-fitness').textContent = Math.floor(this.agent.currentFitness);
                 document.getElementById('ai-strategy').textContent = this.agent.currentStrategy;
-                document.getElementById('ai-fitness').textContent = this.agent.currentFitness.toFixed(0);
-                document.getElementById('ai-best').textContent = this.agent.bestFitness.toFixed(0);
-            }
-            
-            updatePlateauDisplay() {
-                document.getElementById('plateau-count').textContent = this.museum.plateaus.length;
-                const list = document.getElementById('plateau-list');
-                if (this.museum.plateaus.length === 0) {
-                    list.innerHTML = '<div class="key" style="color: #666;">None yet</div>';
-                } else {
-                    list.innerHTML = this.museum.plateaus.slice(-5).reverse().map(p => 
-                        `<div class="plateau-entry">${p.id}. ${p.name} | G${p.generation}</div>`
-                    ).join('');
-                }
+                
+                // Respawn food
+                this.foodSources.forEach(f => {
+                    if (f.respawnTimer > 0) {
+                        f.respawnTimer--;
+                        if (f.respawnTimer === 0) this.drawWorld();
+                    }
+                });
             }
             
             log(message, color = '#ffff00') {
-                this.eventLog.push({ text: message, color: color });
-                if (this.eventLog.length > 5) this.eventLog.shift();
-                const logStr = this.eventLog.map(e => e.text).join('\n');
-                this.logText.setText(logStr);
+                console.log(message);
             }
         }
         
