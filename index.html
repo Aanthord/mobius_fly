@@ -104,6 +104,21 @@
             </div>
 
             <div class="section">
+                <h3>SCORE</h3>
+                <div class="key">Score: <span id="score-display" class="stat">0</span></div>
+                <div class="key">High: <span id="high-score-display" class="stat">0</span></div>
+                <div class="key">Gens: <span id="gens-reached" class="stat">0</span></div>
+            </div>
+
+            <div class="section">
+                <h3>LIFETIME STATS</h3>
+                <div class="key">Mates: <span id="total-mates" class="stat">0</span></div>
+                <div class="key">Foods: <span id="total-food" class="stat">0</span></div>
+                <div class="key">DNA: <span id="total-dna" class="stat">0</span></div>
+                <div class="key">Dist: <span id="total-dist" class="stat">0</span></div>
+            </div>
+
+            <div class="section">
                 <h3>GPU FIL BRAIN</h3>
                 <div class="key" id="ai-status">Status: <span class="ai">OFF</span></div>
                 <div class="key">Cells: <span class="gpu">100,000</span></div>
@@ -351,6 +366,17 @@
                 
                 // Weights for massive compute
                 this.weights = this.initWeights();
+                
+                // SCORING & PROGRESSION
+                this.score = 0;
+                this.highScore = parseInt(localStorage.getItem('mobius_high_score') || '0');
+                this.totalMates = 0;
+                this.totalFood = 0;
+                this.totalDNA = 0;
+                this.generationsReached = 0;
+                this.longestLife = 0;
+                this.totalDistance = 0;
+                this.achievementsUnlocked = new Set();
                 
                 console.log('100K FIL Brain initialized!', this.brain.useCPU ? 'CPU' : 'GPU');
             }
@@ -708,6 +734,78 @@
                 this.currentFitness = r;
                 if (r > this.bestFitness) this.bestFitness = r;
             }
+            
+            // SCORING SYSTEM
+            addScore(points, reason) {
+                this.score += points;
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                    localStorage.setItem('mobius_high_score', this.highScore.toString());
+                }
+                console.log(`+${points} pts: ${reason} (Total: ${this.score})`);
+                this.checkAchievements();
+            }
+            
+            onMating() {
+                this.totalMates++;
+                this.addScore(500, 'MATING SUCCESS');
+                this.checkAchievements();
+            }
+            
+            onFeeding(type) {
+                this.totalFood++;
+                if (type === 'DNA') {
+                    this.totalDNA++;
+                    this.addScore(200, 'DNA ACQUIRED');
+                } else {
+                    this.addScore(50, 'ENERGY FOOD');
+                }
+            }
+            
+            onGeneration(gen) {
+                this.generationsReached = Math.max(this.generationsReached, gen);
+                this.addScore(gen * 100, `GEN ${gen} REACHED`);
+            }
+            
+            onSurvival(age, stage) {
+                const points = stage === 'ADULT' ? 5 : 2;
+                this.addScore(points, 'SURVIVAL');
+                this.longestLife = Math.max(this.longestLife, age);
+            }
+            
+            onMovement(dist) {
+                this.totalDistance += dist;
+                if (this.totalDistance % 50 === 0) {
+                    this.addScore(10, 'EXPLORATION');
+                }
+            }
+            
+            checkAchievements() {
+                const achievements = [
+                    { id: 'first_mate', check: () => this.totalMates >= 1, msg: '🎉 First Mate!' },
+                    { id: 'breeder', check: () => this.totalMates >= 5, msg: '💕 Breeder - 5 Mates!' },
+                    { id: 'prolific', check: () => this.totalMates >= 10, msg: '👑 Prolific - 10 Mates!' },
+                    { id: 'first_gen', check: () => this.generationsReached >= 2, msg: '🧬 Generation 2!' },
+                    { id: 'dynasty', check: () => this.generationsReached >= 5, msg: '🏆 Dynasty - Gen 5!' },
+                    { id: 'collector', check: () => this.totalDNA >= 3, msg: '🧪 Collector - 3 DNA!' },
+                    { id: 'complete', check: () => this.totalDNA >= 4, msg: '💎 Complete Genome!' },
+                    { id: 'explorer', check: () => this.totalDistance >= 100, msg: '🗺️ Explorer - 100 tiles!' },
+                    { id: 'survivor', check: () => this.longestLife >= 200, msg: '⏰ Survivor - 200 turns!' },
+                    { id: 'high_score', check: () => this.score >= 2000, msg: '⭐ Score 2000!' },
+                ];
+                
+                achievements.forEach(ach => {
+                    if (!this.achievementsUnlocked.has(ach.id) && ach.check()) {
+                        this.achievementsUnlocked.add(ach.id);
+                        console.log(`🏆 ACHIEVEMENT: ${ach.msg}`);
+                        this.addScore(250, 'ACHIEVEMENT');
+                        // Store reference to game scene for notification
+                        if (window.gameScene) {
+                            window.gameScene.showAchievementNotification(ach.msg);
+                        }
+                    }
+                });
+            }
         }
         
         // Core systems (abbreviated - same as before)
@@ -767,6 +865,9 @@
                 this.predators = [];
                 this.npcFlies = [];
                 this.generation = 1;
+                
+                // Make this globally accessible for achievement notifications
+                window.gameScene = this;
                 
                 this.generateWorld();
                 
@@ -986,6 +1087,14 @@
                 this.player.turn++;
                 this.player.age++;
                 
+                // Track movement
+                this.agent.onMovement(1);
+                
+                // Survival bonus every 10 turns
+                if (this.player.age % 10 === 0) {
+                    this.agent.onSurvival(this.player.age, this.player.stage);
+                }
+                
                 this.checkLifecycleAdvancement();
                 this.checkPredators();
                 this.updatePlayerSprite();
@@ -1023,11 +1132,17 @@
                 if (food.type === 'ENERGY') {
                     this.player.energy = Math.min(100, this.player.energy + 30);
                     this.log('✓ Energy +30', '#00ff00');
+                    this.createParticleEffect(this.player.q, this.player.r, 0x00ff00, 10);
+                    this.showScorePopup(this.player.q, this.player.r, '+50', 0xffff00);
+                    this.agent.onFeeding('ENERGY');
                 } else {
                     if (!this.player.genome.slots[food.gene]) {
                         this.player.genome.slots[food.gene] = true;
                         this.player.genome.instability += LOCI[food.gene].instability;
                         this.log(`✓ DNA: ${food.gene}`, '#00ff00');
+                        this.createParticleEffect(this.player.q, this.player.r, food.color, 15);
+                        this.showScorePopup(this.player.q, this.player.r, '+200', 0x00ffff);
+                        this.agent.onFeeding('DNA');
                     }
                     this.player.energy = Math.min(100, this.player.energy + 10);
                 }
@@ -1035,6 +1150,25 @@
                 food.respawnTimer = 10;
                 this.drawWorld();
                 this.updateAllUI();
+            }
+            
+            showScorePopup(q, r, text, color) {
+                const pos = this.hexGrid.hexToPixel(q, r);
+                const popup = this.add.text(pos.x, pos.y - 20, text, {
+                    fontSize: '20px',
+                    fontFamily: 'Courier New',
+                    fontStyle: 'bold',
+                    color: '#' + color.toString(16).padStart(6, '0')
+                });
+                popup.setOrigin(0.5);
+                
+                this.tweens.add({
+                    targets: popup,
+                    y: pos.y - 60,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => popup.destroy()
+                });
             }
             
             mate() {
@@ -1050,14 +1184,71 @@
                     });
                 }
                 
+                // PARTICLE EFFECT!
+                this.createParticleEffect(this.player.q, this.player.r, 0xff69b4, 20);
+                this.showScorePopup(this.player.q, this.player.r, '+500', 0xff69b4);
+                
                 this.log('═══ BROOD LAID ═══', '#ff69b4');
+                this.agent.onMating();
                 document.getElementById('has-brood').style.display = 'block';
+            }
+            
+            showAchievementNotification(msg) {
+                const notification = this.add.text(450, 100, msg, {
+                    fontSize: '24px',
+                    fontFamily: 'Courier New',
+                    fontStyle: 'bold',
+                    color: '#ffff00',
+                    backgroundColor: '#000000',
+                    padding: { x: 20, y: 10 }
+                });
+                notification.setOrigin(0.5);
+                notification.setScrollFactor(0);
+                notification.setDepth(1000);
+                
+                this.tweens.add({
+                    targets: notification,
+                    y: 80,
+                    duration: 200,
+                    ease: 'Back.easeOut'
+                });
+                
+                this.time.delayedCall(3000, () => {
+                    this.tweens.add({
+                        targets: notification,
+                        alpha: 0,
+                        y: 60,
+                        duration: 500,
+                        onComplete: () => notification.destroy()
+                    });
+                });
+            }
+            
+            createParticleEffect(q, r, color, count) {
+                const pos = this.hexGrid.hexToPixel(q, r);
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 50 + Math.random() * 100;
+                    const particle = this.add.circle(pos.x, pos.y, 3, color);
+                    particle.setAlpha(0.8);
+                    
+                    this.tweens.add({
+                        targets: particle,
+                        x: pos.x + Math.cos(angle) * speed,
+                        y: pos.y + Math.sin(angle) * speed,
+                        alpha: 0,
+                        duration: 500 + Math.random() * 500,
+                        onComplete: () => particle.destroy()
+                    });
+                }
             }
             
             selectOffspring(index) {
                 if (!this.brood || index >= this.brood.length) return;
                 
                 this.generation++;
+                this.agent.onGeneration(this.generation);
+                
                 this.player.genome = JSON.parse(JSON.stringify(this.brood[index].genome));
                 this.player.stage = 'LARVA';
                 this.player.age = 0;
@@ -1193,6 +1384,15 @@
                 
                 document.getElementById('ai-fitness').textContent = Math.floor(this.agent.currentFitness);
                 document.getElementById('ai-strategy').textContent = this.agent.currentStrategy;
+                
+                // SCORING UI
+                document.getElementById('score-display').textContent = this.agent.score;
+                document.getElementById('high-score-display').textContent = this.agent.highScore;
+                document.getElementById('gens-reached').textContent = this.agent.generationsReached;
+                document.getElementById('total-mates').textContent = this.agent.totalMates;
+                document.getElementById('total-food').textContent = this.agent.totalFood;
+                document.getElementById('total-dna').textContent = this.agent.totalDNA;
+                document.getElementById('total-dist').textContent = Math.floor(this.agent.totalDistance);
                 
                 // Respawn food
                 this.foodSources.forEach(f => {
