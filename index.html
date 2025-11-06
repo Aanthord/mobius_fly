@@ -356,26 +356,17 @@
             }
             
             initWeights() {
-                // Large weight matrices for GPU work
+                // Efficient sparse weight representation
                 const phi = (1 + Math.sqrt(5)) / 2;
                 return {
-                    s2h1: this.randomMatrix(4096, 24576, phi),
-                    h1h2: this.randomMatrix(24576, 24576, phi),
-                    h2h3: this.randomMatrix(24576, 24576, phi),
-                    h3m: this.randomMatrix(24576, 22176, phi)
+                    phi: phi,
+                    scale: 0.01
                 };
             }
             
-            randomMatrix(rows, cols, phi) {
-                const m = [];
-                for (let i = 0; i < rows; i++) {
-                    const row = [];
-                    for (let j = 0; j < cols; j++) {
-                        row.push(Math.sin(i * phi + j / phi) * 0.01);
-                    }
-                    m.push(row);
-                }
-                return m;
+            // Compute weight on-the-fly using golden ratio function
+            getWeight(i, j, phi) {
+                return Math.sin(i * phi + j / phi) * 0.01;
             }
             
             toggle() {
@@ -393,20 +384,24 @@
                 game.predators.forEach(pred => {
                     const dq = pred.q - game.player.q;
                     const dr = pred.r - game.player.r;
-                    const dist = Math.sqrt(dq * dq + dr * dr);
+                    const dist = Math.abs(dq) + Math.abs(dr); // Manhattan distance for hex grid
                     const angle = Math.atan2(dr, dq);
                     
-                    // MASSIVE threat signal
-                    const threat = Math.max(0, 10.0 * (1 - dist / 12));
+                    // MASSIVE threat signal - scales with proximity
+                    const threat = Math.max(0, 12.0 * (1 - dist / 10));
                     
-                    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
-                    for (let offset = -20; offset <= 20; offset++) {
-                        const i = (idx + offset + visualRes) % visualRes;
-                        sensory[i] = Math.max(sensory[i], threat * Math.exp(-offset * offset / 50));
+                    if (threat > 0.1) {
+                        const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
+                        // Wide activation so it's hard to miss
+                        for (let offset = -30; offset <= 30; offset++) {
+                            const i = (idx + offset + visualRes) % visualRes;
+                            sensory[i] = Math.max(sensory[i], threat * Math.exp(-offset * offset / 80));
+                        }
                     }
                 });
                 
-                // Food - moderate
+                // Food - HIGH SALIENCE, especially when hungry
+                const hungerBoost = game.player.energy < 50 ? 2.0 : 1.0;
                 game.foodSources.forEach(food => {
                     if (food.type === 'DNA' && game.player.genome.slots[food.gene]) return;
                     if (food.respawnTimer > 0) return;
@@ -416,17 +411,17 @@
                     const dist = Math.sqrt(dq * dq + dr * dr);
                     const angle = Math.atan2(dr, dq);
                     
-                    const salience = food.type === 'ENERGY' ? 3.0 : 2.0;
-                    const foodSignal = Math.max(0, salience * (1 - dist / 25));
+                    const baseSalience = food.type === 'ENERGY' ? 6.0 : 4.0;
+                    const foodSignal = Math.max(0, baseSalience * hungerBoost * (1 - dist / 20));
                     
                     const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
-                    for (let offset = -10; offset <= 10; offset++) {
+                    for (let offset = -15; offset <= 15; offset++) {
                         const i = (idx + offset + visualRes) % visualRes;
-                        sensory[i] += foodSignal * Math.exp(-offset * offset / 20) * 0.3;
+                        sensory[i] += foodSignal * Math.exp(-offset * offset / 30) * 0.5;
                     }
                 });
                 
-                // Mates
+                // Mates - STRONG DRIVE for adults
                 if (game.player.stage === 'ADULT' && !game.brood) {
                     game.npcFlies.forEach(npc => {
                         const dq = npc.q - game.player.q;
@@ -434,47 +429,58 @@
                         const dist = Math.sqrt(dq * dq + dr * dr);
                         const angle = Math.atan2(dr, dq);
                         
-                        const mate = Math.max(0, 4.0 * (1 - dist / 15));
+                        const mateSignal = Math.max(0, 7.0 * (1 - dist / 18));
                         
                         const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
-                        for (let offset = -12; offset <= 12; offset++) {
+                        for (let offset = -18; offset <= 18; offset++) {
                             const i = (idx + offset + visualRes) % visualRes;
-                            sensory[i] += mate * Math.exp(-offset * offset / 24) * 0.4;
+                            sensory[i] += mateSignal * Math.exp(-offset * offset / 35) * 0.6;
                         }
                     });
                 }
                 
-                // Internal state
+                // Internal state - BOOSTED DRIVES
                 sensory[2048] = game.player.stage === 'LARVA' ? 5.0 : 0.0;
                 sensory[2049] = game.player.stage === 'PUPA' ? 5.0 : 0.0;
                 sensory[2050] = game.player.stage === 'ADULT' ? 5.0 : 0.0;
                 sensory[2051] = (game.player.age / game.player.maxAge) * 4.0;
                 sensory[2052] = (game.player.energy / 100) * 3.0;
-                sensory[2053] = game.brood ? 8.0 : 0.0;
+                sensory[2053] = game.brood ? 10.0 : 0.0; // URGENT: select offspring!
                 
                 const onFood = game.foodSources.some(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
-                sensory[2054] = onFood ? 6.0 : 0.0;
+                sensory[2054] = onFood ? 8.0 : 0.0; // STRONG: eat now!
                 
                 const nearMate = game.npcFlies.some(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
-                sensory[2055] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 7.0 : 0.0;
+                sensory[2055] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 9.0 : 0.0; // STRONG: mate now!
                 
-                // Energy urgency
-                if (game.player.energy < 30) {
-                    sensory[2056] = 8.0; // HUNGRY!
+                // Energy urgency - CRITICAL when low
+                if (game.player.energy < 40) {
+                    sensory[2056] = 12.0; // STARVING!
+                } else if (game.player.energy < 60) {
+                    sensory[2056] = 6.0; // Hungry
+                } else {
+                    sensory[2056] = 0.0;
+                }
+                
+                // Mating urge for adults without brood - VERY STRONG
+                if (game.player.stage === 'ADULT' && !game.brood) {
+                    sensory[2057] = 12.0; // VERY STRONG breeding drive
                 }
                 
                 return sensory;
             }
             
-            forward(sensory) {
+            forward(sensory, game) {
                 // MASSIVE GPU COMPUTATION
                 
-                // Layer 1: 4096 → 24576
+                // Layer 1: 4096 → 24576 (sparse sampling)
                 const h1 = new Float32Array(24576);
                 for (let i = 0; i < 4096; i++) {
                     if (sensory[i] > 0.01) {
-                        for (let j = 0; j < 24576; j++) {
-                            h1[j] += sensory[i] * this.weights.s2h1[i][j];
+                        // Sample 64 connections per input neuron instead of all 24576
+                        for (let k = 0; k < 64; k++) {
+                            const j = (i * 97 + k * 379) % 24576; // Pseudo-random but deterministic
+                            h1[j] += sensory[i] * this.getWeight(i, j, this.weights.phi);
                         }
                     }
                 }
@@ -487,13 +493,15 @@
                 this.brain.evolve();
                 this.brain.evolve(); // Triple evolve for more GPU work
                 
-                // Layer 2: 24576 → 24576 (massive matrix multiply)
+                // Layer 2: 24576 → 24576 (highly sparse)
                 const h2 = new Float32Array(24576);
                 for (let i = 0; i < 24576; i++) {
                     const val = this.brain.state[(4096 + i) * 4];
                     if (Math.abs(val) > 0.01) {
-                        for (let j = 0; j < 1024; j++) { // Reduced for speed
-                            h2[j] += val * this.weights.h1h2[i][j % 24576];
+                        // Only 32 connections per neuron
+                        for (let k = 0; k < 32; k++) {
+                            const j = (i * 73 + k * 211) % 24576;
+                            h2[j] += val * this.getWeight(i, j, this.weights.phi);
                         }
                     }
                 }
@@ -504,39 +512,39 @@
                 this.brain.evolve();
                 this.brain.evolve();
                 
-                // Motor output with DIRECT REFLEXES
+                // Motor output from brain state
                 const motor = new Float32Array(22176);
                 
-                // CRITICAL: Direct threat → movement mapping
-                let threatAngle = null;
-                let maxThreat = 0;
-                for (let i = 0; i < 2048; i++) {
-                    if (sensory[i] > maxThreat) {
-                        maxThreat = sensory[i];
-                        threatAngle = (i / 2048) * 2 * Math.PI;
-                    }
+                // Read movement preferences from brain
+                for (let i = 0; i < 8192; i++) {
+                    motor[i] = this.brain.state[(77824 + i) * 4];
                 }
                 
-                if (maxThreat > 5.0 && threatAngle !== null) {
-                    // FLEE: opposite direction with HIGH activation
-                    const escapeAngle = threatAngle + Math.PI;
-                    const escapeIdx = Math.floor((escapeAngle / (2 * Math.PI)) * 8192) % 8192;
-                    
-                    for (let offset = -500; offset <= 500; offset++) {
-                        const idx = (escapeIdx + offset + 8192) % 8192;
-                        motor[idx] = 50.0 * Math.exp(-offset * offset / 50000); // HUGE activation
-                    }
-                } else {
-                    // Normal processing
-                    for (let i = 0; i < 8192; i++) {
-                        motor[i] = this.brain.state[(77824 + i) * 4];
+                // DIRECT BEHAVIORAL RESPONSES FROM SENSORY STATE
+                // These bypass the weak sparse connections and respond immediately
+                
+                // Feed response - DIRECTLY from sensory
+                const onFood = sensory[2054] > 5.0; // Direct check
+                motor[20000] = onFood ? 20.0 : 0.0; // VERY HIGH
+                
+                // Mate response - DIRECTLY from sensory with STRONG breeding drive contribution
+                const nearMate = sensory[2055] > 5.0; // Direct check
+                const breedingDrive = sensory[2057] * 2.5; // Amplify breeding drive!
+                motor[20500] = nearMate ? 25.0 : breedingDrive; // VERY HIGH when near, strong drive otherwise
+                
+                // Offspring selection - DIRECTLY from sensory
+                motor[21000] = sensory[2053]; // Pass through directly (10.0 when brood exists)
+                
+                // Hunger modulation - boost food-seeking in motor layer
+                if (sensory[2056] > 8.0) { // Starving
+                    // Boost motor responses toward food signals
+                    for (let i = 0; i < 2048; i++) {
+                        if (sensory[i] > 2.0) { // Food signal
+                            const motorIdx = (i * 4) % 8192;
+                            motor[motorIdx] += sensory[i] * 3.0; // STRONG boost
+                        }
                     }
                 }
-                
-                // Behavior neurons
-                motor[20000] = onFood ? 15.0 : 0.0; // Feed
-                motor[20500] = (nearMate && game.player.stage === 'ADULT') ? 18.0 : 0.0; // Mate
-                motor[21000] = game.brood ? 20.0 : 0.0; // Select offspring
                 
                 return motor;
             }
@@ -546,34 +554,120 @@
                 this.decisions++;
                 
                 const sensory = this.encodeSensory(game);
-                const motor = this.forward(sensory);
+                
+                // Calculate max threat
+                let maxThreat = 0;
+                let threatAngle = null;
+                for (let i = 0; i < 2048; i++) {
+                    if (sensory[i] > maxThreat) {
+                        maxThreat = sensory[i];
+                        threatAngle = (i / 2048) * 2 * Math.PI - Math.PI;
+                    }
+                }
+                
+                // Check if we're on important business
+                const onMission = (game.player.stage === 'ADULT' && !game.brood) || sensory[2056] > 8.0;
+                const fleeThreshold = onMission ? 6.0 : 4.0; // Higher threshold when on mission
+                
+                // If in IMMEDIATE DANGER, flee
+                if (maxThreat > fleeThreshold && threatAngle !== null) {
+                    const escapeAngle = threatAngle + Math.PI;
+                    const normalizedAngle = ((escapeAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+                    const directionIndex = Math.round((normalizedAngle / (Math.PI / 2))) % 4;
+                    const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
+                    
+                    this.currentStrategy = 'FLEE_' + dirs[directionIndex];
+                    console.log(`FLEEING! Threat=${maxThreat.toFixed(2)}, Angle=${(threatAngle*180/Math.PI).toFixed(0)}°, Escape=${dirs[directionIndex]}`);
+                    return { type: 'MOVE', direction: dirs[directionIndex] };
+                }
+                
+                const motor = this.forward(sensory, game);
                 
                 // Check for undefined refs
                 if (!game.foodSources || !game.player) return null;
                 
-                // Decode
-                if (motor[21000] > 15.0 && game.brood) {
+                // Decode behaviors - REORDERED PRIORITIES
+                
+                // 1. Select offspring (highest priority when available)
+                if (motor[21000] > 8.0 && game.brood) {
                     this.currentStrategy = 'SELECT';
+                    console.log('SELECTING OFFSPRING!');
                     return { type: 'SELECT_OFFSPRING', index: 0 };
                 }
                 
-                if (motor[20500] > 12.0 && game.player.stage === 'ADULT' && !game.brood) {
-                    const near = game.npcFlies.find(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
-                    if (near) {
-                        this.currentStrategy = 'MATE';
-                        return { type: 'MATE' };
-                    }
-                }
-                
-                if (motor[20000] > 10.0) {
+                // 2. Feed if STANDING ON FOOD - immediate action
+                if (motor[20000] > 12.0) {
                     const food = game.foodSources.find(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
                     if (food) {
                         this.currentStrategy = 'FEED';
+                        console.log('FEEDING!');
                         return { type: 'FEED' };
                     }
                 }
                 
-                // Movement: find peak in first 8192 motor neurons
+                // 3. Mate if NEXT TO PARTNER - immediate action
+                if (motor[20500] > 20.0 && game.player.stage === 'ADULT' && !game.brood) {
+                    const near = game.npcFlies.find(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
+                    if (near) {
+                        this.currentStrategy = 'MATE';
+                        console.log('MATING!');
+                        return { type: 'MATE' };
+                    }
+                }
+                
+                // 4. ACTIVE MATE-SEEKING - HIGH PRIORITY for adults (before food seeking!)
+                if (game.player.stage === 'ADULT' && !game.brood && motor[20500] > 15.0) {
+                    const nearest = game.npcFlies.reduce((closest, npc) => {
+                        const dist = Math.abs(npc.q - game.player.q) + Math.abs(npc.r - game.player.r);
+                        return dist < closest.dist ? { npc, dist } : closest;
+                    }, { dist: Infinity, npc: null });
+                    
+                    if (nearest.npc && nearest.dist < 15) { // Increased from 10 to 15
+                        const dq = nearest.npc.q - game.player.q;
+                        const dr = nearest.npc.r - game.player.r;
+                        let dir;
+                        if (Math.abs(dq) > Math.abs(dr)) {
+                            dir = dq > 0 ? 'RIGHT' : 'LEFT';
+                        } else {
+                            dir = dr > 0 ? 'DOWN' : 'UP';
+                        }
+                        this.currentStrategy = 'SEEK_MATE';
+                        console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist}`);
+                        return { type: 'MOVE', direction: dir };
+                    }
+                }
+                
+                // 5. ACTIVE FOOD-SEEKING - when hungry
+                if (sensory[2056] > 5.0 || game.player.energy < 40) {
+                    const foodTargets = game.foodSources.filter(f => {
+                        if (f.respawnTimer > 0) return false;
+                        if (f.type === 'DNA' && game.player.genome.slots[f.gene]) return false;
+                        return true;
+                    });
+                    
+                    if (foodTargets.length > 0) {
+                        const nearest = foodTargets.reduce((closest, food) => {
+                            const dist = Math.abs(food.q - game.player.q) + Math.abs(food.r - game.player.r);
+                            return dist < closest.dist ? { food, dist } : closest;
+                        }, { dist: Infinity, food: null });
+                        
+                        if (nearest.food && nearest.dist < 15) { // Increased from 12 to 15
+                            const dq = nearest.food.q - game.player.q;
+                            const dr = nearest.food.r - game.player.r;
+                            let dir;
+                            if (Math.abs(dq) > Math.abs(dr)) {
+                                dir = dq > 0 ? 'RIGHT' : 'LEFT';
+                            } else {
+                                dir = dr > 0 ? 'DOWN' : 'UP';
+                            }
+                            this.currentStrategy = 'SEEK_FOOD';
+                            console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist}`);
+                            return { type: 'MOVE', direction: dir };
+                        }
+                    }
+                }
+                
+                // 6. Movement: find peak in first 8192 motor neurons
                 let maxIdx = 0;
                 let maxVal = motor[0];
                 for (let i = 1; i < 8192; i++) {
@@ -581,6 +675,14 @@
                         maxVal = motor[i];
                         maxIdx = i;
                     }
+                }
+                
+                // EXPLORATION: If motor signal is weak, add some randomness
+                if (maxVal < 0.5 && Math.random() < 0.3) {
+                    const randomDir = ['RIGHT', 'DOWN', 'LEFT', 'UP'][Math.floor(Math.random() * 4)];
+                    this.currentStrategy = 'EXPLORE';
+                    console.log('EXPLORING:', randomDir);
+                    return { type: 'MOVE', direction: randomDir };
                 }
                 
                 // Convert to cardinal direction
@@ -676,7 +778,7 @@
                 this.drawWorld();
                 
                 this.player = {
-                    q: 0, r: 0, stage: 'LARVA', turn: 0, age: 0, maxAge: 6,
+                    q: 0, r: 0, stage: 'LARVA', turn: 0, age: 0, maxAge: 30,
                     energy: 100,
                     genome: {
                         slots: { Notch: true, Egfr: true, hh: true, wg: true },
@@ -711,9 +813,9 @@
                     loop: true
                 });
                 
-                // Energy drain
+                // Energy drain - slower now (every 2 seconds)
                 this.time.addEvent({
-                    delay: 1000,
+                    delay: 2000,
                     callback: () => {
                         if (this.player.alive) {
                             this.player.energy = Math.max(0, this.player.energy - 1);
@@ -744,7 +846,7 @@
                     }
                 }
                 
-                // FOOD: Mix of DNA and ENERGY
+                // FOOD: Mix of DNA and ENERGY - MORE FOOD!
                 const foodDefs = [
                     // DNA food (brown/orange)
                     { q: 3, r: 2, type: 'DNA', gene: 'vg', color: 0x8B4513 },
@@ -752,27 +854,40 @@
                     { q: 5, r: -2, type: 'DNA', gene: 'InR', color: 0xD2B48C },
                     { q: -2, r: -4, type: 'DNA', gene: 'Orco', color: 0xFFFF99 },
                     
-                    // ENERGY food (green circles) - pure sustenance
+                    // ENERGY food (green circles) - MORE SCATTERED AROUND!
                     { q: 7, r: 1, type: 'ENERGY', color: 0x00ff00 },
                     { q: -6, r: -1, type: 'ENERGY', color: 0x00ff00 },
                     { q: 2, r: 5, type: 'ENERGY', color: 0x00ff00 },
                     { q: -8, r: 4, type: 'ENERGY', color: 0x00ff00 },
                     { q: 10, r: -4, type: 'ENERGY', color: 0x00ff00 },
                     { q: -3, r: 7, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 12, r: 2, type: 'ENERGY', color: 0x00ff00 },
+                    { q: -10, r: -5, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 0, r: -8, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 8, r: 6, type: 'ENERGY', color: 0x00ff00 },
+                    { q: -5, r: -7, type: 'ENERGY', color: 0x00ff00 },
+                    { q: 4, r: -6, type: 'ENERGY', color: 0x00ff00 },
                 ];
                 
                 foodDefs.forEach(f => this.foodSources.push({ ...f, respawnTimer: 0 }));
                 
-                // NPCs
-                [{ q: 4, r: 4 }, { q: -5, r: 3 }, { q: 6, r: -3 }].forEach(pos => {
+                // NPCs - MORE FLIES!
+                [
+                    { q: 4, r: 4 }, 
+                    { q: -5, r: 3 }, 
+                    { q: 6, r: -3 },
+                    { q: -7, r: 5 },
+                    { q: 9, r: -2 },
+                    { q: 3, r: -5 }
+                ].forEach(pos => {
                     this.npcFlies.push({
                         q: pos.q, r: pos.r, stage: 'ADULT',
                         genome: { slots: { Notch: true, Egfr: true, hh: true, wg: true }, instability: 3 }
                     });
                 });
                 
-                // Predators
-                [{ q: 5, r: 5 }, { q: -8, r: -3 }].forEach(pos => {
+                // Predators - REDUCED from 2 to 1
+                [{ q: -8, r: -3 }].forEach(pos => {
                     this.predators.push({
                         q: pos.q, r: pos.r, type: 'SPIDER', speed: 1, vision: 3
                     });
@@ -892,7 +1007,7 @@
                     if (idx < stages.length - 1) {
                         this.player.stage = stages[idx + 1];
                         this.player.age = 0;
-                        this.player.maxAge = this.player.stage === 'ADULT' ? 15 : 6;
+                        this.player.maxAge = this.player.stage === 'ADULT' ? 300 : 30; // Adults live 60 seconds!
                         this.log(`⟹ ${this.player.stage}`, '#00ffff');
                         this.updatePlayerSprite();
                     } else {
@@ -946,7 +1061,7 @@
                 this.player.genome = JSON.parse(JSON.stringify(this.brood[index].genome));
                 this.player.stage = 'LARVA';
                 this.player.age = 0;
-                this.player.maxAge = 6;
+                this.player.maxAge = 30;
                 this.player.energy = 100;
                 this.player.q = 0;
                 this.player.r = 0;
@@ -998,7 +1113,7 @@
             
             updateNPCs() {
                 this.npcFlies.forEach(npc => {
-                    if (Math.random() < 0.3) {
+                    if (Math.random() < 0.5) { // Increased from 0.3 to 0.5
                         const dirs = [{ q: 0, r: -1 }, { q: 0, r: 1 }, { q: -1, r: 0 }, { q: 1, r: 0 }];
                         const dir = dirs[Math.floor(Math.random() * dirs.length)];
                         npc.q += dir.q;
@@ -1025,7 +1140,7 @@
                     this.generation++;
                     this.player.stage = 'LARVA';
                     this.player.age = 0;
-                    this.player.maxAge = 6;
+                    this.player.maxAge = 30;
                     this.player.energy = 100;
                     this.player.q = 0;
                     this.player.r = 0;
