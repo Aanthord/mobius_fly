@@ -104,6 +104,20 @@
             </div>
 
             <div class="section">
+                <h3>TOPOLOGY</h3>
+                <div class="key" id="parity-status">Parity: <span class="quantum">NORMAL</span></div>
+                <div class="key" id="seam-count">Seams: <span class="stat">0</span></div>
+            </div>
+
+            <div class="section">
+                <h3>PLATEAUS</h3>
+                <div class="key">Found: <span id="plateau-count" class="plateau">0</span></div>
+                <div id="plateau-recent" style="font-size: 8px; color: #00ff00;">
+                    None yet
+                </div>
+            </div>
+
+            <div class="section">
                 <h3>SCORE</h3>
                 <div class="key">Score: <span id="score-display" class="stat">0</span></div>
                 <div class="key">High: <span id="high-score-display" class="stat">0</span></div>
@@ -446,6 +460,32 @@
                         sensory[i] += foodSignal * Math.exp(-offset * offset / 30) * 0.5;
                     }
                 });
+                
+                // CHEMOSENSORY LAYER (512 neurons - directional smell)
+                const chemBase = 2048;
+                for (let i = 0; i < 512; i++) {
+                    const angle = (i / 512) * 2 * Math.PI;
+                    const dx = Math.cos(angle);
+                    const dy = Math.sin(angle);
+                    
+                    let smell = 0;
+                    game.foodSources.forEach(food => {
+                        if (food.respawnTimer > 0) return;
+                        if (food.type === 'DNA' && game.player.genome.slots[food.gene]) return;
+                        
+                        const dq = food.q - game.player.q;
+                        const dr = food.r - game.player.r;
+                        const dist = Math.sqrt(dq * dq + dr * dr);
+                        const dot = (dq * dx + dr * dy) / (dist + 0.01);
+                        
+                        if (dot > 0.7) { // In direction
+                            const smellStrength = food.type === 'ENERGY' ? 0.8 : 1.2;
+                            smell += Math.max(0, smellStrength * (1.0 - dist / 30) * dot);
+                        }
+                    });
+                    
+                    sensory[chemBase + i] = smell * hungerBoost;
+                }
                 
                 // Mates - STRONG DRIVE for adults
                 if (game.player.stage === 'ADULT' && !game.brood) {
@@ -808,27 +848,125 @@
             }
         }
         
-        // Core systems (abbreviated - same as before)
+        // ============================================================================
+        // EoP SYSTEM - Risk/Reward for Pickups
+        // ============================================================================
+        
+        class EoPSystem {
+            calculateCF(fly, tile, posture = 'DEFAULT') {
+                let cf = tile.cf_base || 0;
+                if (fly.inHeat) cf += 1;
+                if (posture === 'GREEDY_SURGE') cf += 1;
+                if (posture === 'SAFE_BUFFER') cf -= 1;
+                return Math.max(0, cf);
+            }
+            
+            roll(fly, item, cf, posture = 'DEFAULT') {
+                const instability = fly.genome.instability || 0;
+                let p_SI = 0.40, p_CS = 0.05; // Success vs Critical failure
+                
+                if (fly.stage === 'LARVA') p_SI += 0.10; // Larvae safer
+                if (instability > 8) p_CS += 0.05; // High instability riskier
+                if (cf > 2) p_CS += 0.05; // High CF riskier
+                
+                const roll = Math.random();
+                
+                if (roll < p_SI) {
+                    return { outcome: 'SI', instability: -1, score: 200 }; // Success!
+                }
+                if (roll > 0.95) {
+                    return { outcome: 'CS', instability: 2, stun: 2, score: -50 }; // Critical failure
+                }
+                return { outcome: 'MF', instability: 0, score: 50 }; // Mixed/neutral
+            }
+        }
+        
+        // ============================================================================
+        // PLATEAU MUSEUM - Track Stable Genome Discoveries
+        // ============================================================================
+        
+        class PlateauMuseum {
+            constructor() {
+                this.plateaus = [];
+                this.nextPlateauId = 1;
+            }
+            
+            checkAndSave(genome, stability, generation) {
+                if (stability < 60) return null;
+                
+                const genomeSignature = Object.keys(genome.slots)
+                    .filter(k => genome.slots[k])
+                    .sort()
+                    .join('|');
+                
+                const isNovel = !this.plateaus.some(p => p.signature === genomeSignature);
+                if (!isNovel) return null;
+                
+                const totalGenes = Object.keys(genome.slots).filter(k => genome.slots[k]).length;
+                if (totalGenes <= 4) return null; // Must have evolved beyond basics
+                
+                const plateau = {
+                    id: this.nextPlateauId++,
+                    signature: genomeSignature,
+                    stability: stability,
+                    generation: generation,
+                    geneCount: totalGenes,
+                    name: `Evolved-${totalGenes}G`,
+                    timestamp: Date.now()
+                };
+                
+                this.plateaus.push(plateau);
+                return plateau;
+            }
+        }
+        
+        // ============================================================================
+        // EXPANDED LOCI - 15 Genes
+        // ============================================================================
+        
         const LOCI = {
+            // Core developmental genes
             Notch: { class: 'Core', effects: { viability: 15 }, instability: 0 },
             Egfr: { class: 'Core', effects: { viability: 12 }, instability: 0 },
             hh: { class: 'Core', effects: { viability: 10 }, instability: 1 },
             wg: { class: 'Core', effects: { viability: 10 }, instability: 1 },
+            
+            // Sensorimotor genes
             vg: { class: 'Sensorimotor', effects: { flight: 8 }, instability: 1 },
+            sd: { class: 'Sensorimotor', effects: { flight: 6 }, instability: 1 },
+            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 },
+            Or22a: { class: 'Sensorimotor', effects: { olfaction: 8 }, instability: 1 },
+            
+            // Metabolic/stress genes
             Hsp70: { class: 'Metabolic', effects: { heat_tol: 12 }, instability: 1 },
+            Hsp83: { class: 'Metabolic', effects: { heat_tol: 8 }, instability: 0 },
             InR: { class: 'Metabolic', effects: { energy: 8 }, instability: 2 },
-            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 }
+            Drip: { class: 'Metabolic', effects: { desiccation: 10 }, instability: 1 },
+            Adh: { class: 'Metabolic', effects: { ferment_tol: 10 }, instability: 1 },
+            Sod: { class: 'Metabolic', effects: { oxidative: 6 }, instability: 1 },
+            
+            // Topology sense
+            Seamwise_gamma: { class: 'Topology', effects: { parity_sense: 12 }, instability: 2 }
         };
         
         class HexGrid {
             constructor(hexSize) {
                 this.hexSize = hexSize;
+                this.seamLine = 0; // Seam at equator (r=0)
             }
+            
             hexToPixel(q, r) {
                 const x = this.hexSize * (3/2 * q);
                 const y = this.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
                 return { x, y };
             }
+            
+            crossesSeam(r_from, r_to) {
+                // Crossing r=0 flips parity (Möbius twist)
+                return (r_from < this.seamLine && r_to >= this.seamLine) ||
+                       (r_from >= this.seamLine && r_to < this.seamLine);
+            }
+            
             drawHexagon(graphics, x, y, size, color, alpha = 1) {
                 graphics.fillStyle(color, alpha);
                 graphics.beginPath();
@@ -854,6 +992,8 @@
             constructor() {
                 super({ key: 'GameScene' });
                 this.agent = new MassiveFILAgent();
+                this.eopSystem = new EoPSystem(); // EoP for risk/reward pickups
+                this.museum = new PlateauMuseum(); // Track stable genomes
             }
             
             create() {
@@ -868,6 +1008,8 @@
                 
                 // Make this globally accessible for achievement notifications
                 window.gameScene = this;
+                
+                this.seamCrossings = 0; // Track topology interactions
                 
                 this.generateWorld();
                 
@@ -885,7 +1027,12 @@
                         slots: { Notch: true, Egfr: true, hh: true, wg: true },
                         instability: 3
                     },
-                    inventory: [], alive: true
+                    inventory: [], 
+                    alive: true,
+                    parityFlipped: false, // Möbius topology
+                    posture: 'DEFAULT', // For EoP system
+                    inHeat: false, // For CF calculation
+                    stunned: 0 // Stun counter
                 };
                 
                 this.playerSprite = this.add.circle(0, 0, 10, 0xFF6B6B).setDepth(100);
@@ -947,27 +1094,29 @@
                     }
                 }
                 
-                // FOOD: Mix of DNA and ENERGY - MORE FOOD!
+                // FOOD: Mix of DNA and ENERGY - MORE FOOD with CF values!
                 const foodDefs = [
-                    // DNA food (brown/orange)
-                    { q: 3, r: 2, type: 'DNA', gene: 'vg', color: 0x8B4513 },
-                    { q: -4, r: 3, type: 'DNA', gene: 'Hsp70', color: 0xFFA500 },
-                    { q: 5, r: -2, type: 'DNA', gene: 'InR', color: 0xD2B48C },
-                    { q: -2, r: -4, type: 'DNA', gene: 'Orco', color: 0xFFFF99 },
+                    // DNA food (brown/orange) with CF risk
+                    { q: 3, r: 2, type: 'DNA', gene: 'vg', color: 0x8B4513, cf_base: 0 },
+                    { q: -4, r: 3, type: 'DNA', gene: 'Hsp70', color: 0xFFA500, cf_base: 1 },
+                    { q: 5, r: -2, type: 'DNA', gene: 'InR', color: 0xD2B48C, cf_base: 0 },
+                    { q: -2, r: -4, type: 'DNA', gene: 'Orco', color: 0xFFFF99, cf_base: 1 },
+                    { q: 8, r: 3, type: 'DNA', gene: 'Adh', color: 0xCD853F, cf_base: 0 },
+                    { q: -7, r: -2, type: 'DNA', gene: 'Drip', color: 0xDEB887, cf_base: 1 },
                     
-                    // ENERGY food (green circles) - MORE SCATTERED AROUND!
-                    { q: 7, r: 1, type: 'ENERGY', color: 0x00ff00 },
-                    { q: -6, r: -1, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 2, r: 5, type: 'ENERGY', color: 0x00ff00 },
-                    { q: -8, r: 4, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 10, r: -4, type: 'ENERGY', color: 0x00ff00 },
-                    { q: -3, r: 7, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 12, r: 2, type: 'ENERGY', color: 0x00ff00 },
-                    { q: -10, r: -5, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 0, r: -8, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 8, r: 6, type: 'ENERGY', color: 0x00ff00 },
-                    { q: -5, r: -7, type: 'ENERGY', color: 0x00ff00 },
-                    { q: 4, r: -6, type: 'ENERGY', color: 0x00ff00 },
+                    // ENERGY food (green circles) - pure sustenance
+                    { q: 7, r: 1, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: -6, r: -1, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 2, r: 5, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: -8, r: 4, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 10, r: -4, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: -3, r: 7, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 12, r: 2, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: -10, r: -5, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 0, r: -8, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 8, r: 6, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: -5, r: -7, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
+                    { q: 4, r: -6, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
                 ];
                 
                 foodDefs.forEach(f => this.foodSources.push({ ...f, respawnTimer: 0 }));
@@ -987,10 +1136,21 @@
                     });
                 });
                 
-                // Predators - REDUCED from 2 to 1
-                [{ q: -8, r: -3 }].forEach(pos => {
+                // Predators - MULTIPLE TYPES!
+                [
+                    { q: -8, r: -3, type: 'JUMPING_SPIDER', color: 0xff0000, speed: 1, vision: 3, behavior: 'chase' },
+                    { q: 10, r: 5, type: 'DRAGONFLY', color: 0xff6600, speed: 2, vision: 4, behavior: 'patrol' },
+                    { q: -5, r: 8, type: 'ORB_SPIDER', color: 0xaa0000, speed: 0, vision: 2, behavior: 'web' }
+                ].forEach(pos => {
                     this.predators.push({
-                        q: pos.q, r: pos.r, type: 'SPIDER', speed: 1, vision: 3
+                        q: pos.q, r: pos.r, 
+                        type: pos.type,
+                        color: pos.color,
+                        speed: pos.speed, 
+                        vision: pos.vision,
+                        behavior: pos.behavior,
+                        patrolDir: 1,
+                        patrolCount: 0
                     });
                 });
             }
@@ -1076,11 +1236,30 @@
                 if (direction === 'LEFT') newQ -= 1;
                 if (direction === 'RIGHT') newQ += 1;
                 
-                // Wrap
+                // Wrap HORIZONTALLY (q: -15 to 15)
                 if (newQ < -15) newQ = 15;
                 if (newQ > 15) newQ = -15;
-                if (newR < -10) newR = 10;
-                if (newR > 10) newR = -10;
+                
+                // Wrap VERTICALLY with parity flip (Möbius twist)
+                if (newR < -10) {
+                    newR = 10;
+                    this.player.parityFlipped = !this.player.parityFlipped;
+                    this.log('Möbius wrap: top→bottom', '#00ffff');
+                    this.agent.addScore(25, 'TOPOLOGY');
+                } else if (newR > 10) {
+                    newR = -10;
+                    this.player.parityFlipped = !this.player.parityFlipped;
+                    this.log('Möbius wrap: bottom→top', '#00ffff');
+                    this.agent.addScore(25, 'TOPOLOGY');
+                }
+                
+                // SEAM CROSSING at r=0
+                if (this.hexGrid.crossesSeam(this.player.r, newR)) {
+                    this.player.parityFlipped = !this.player.parityFlipped;
+                    this.seamCrossings++;
+                    this.log('Seam crossed!', '#00ffff');
+                    this.agent.addScore(10, 'TOPOLOGY');
+                }
                 
                 this.player.q = newQ;
                 this.player.r = newR;
@@ -1095,11 +1274,37 @@
                     this.agent.onSurvival(this.player.age, this.player.stage);
                 }
                 
+                // Check for plateau discovery
+                this.checkPlateaus();
+                
                 this.checkLifecycleAdvancement();
                 this.checkPredators();
                 this.updatePlayerSprite();
                 this.updateAllUI();
                 this.drawWorld();
+            }
+            
+            checkPlateaus() {
+                // Calculate current stability
+                let stability = 0;
+                ['Notch', 'Egfr', 'hh', 'wg'].forEach(gene => {
+                    if (this.player.genome.slots[gene]) {
+                        stability += LOCI[gene].effects.viability || 0;
+                    }
+                });
+                stability = stability + 50 - this.player.genome.instability * 5;
+                
+                const plateau = this.museum.checkAndSave(
+                    this.player.genome, 
+                    stability, 
+                    this.generation
+                );
+                
+                if (plateau) {
+                    this.log(`★ PLATEAU: ${plateau.name}!`, '#00ff00');
+                    this.agent.addScore(500, 'PLATEAU DISCOVERED');
+                    this.showAchievementNotification(`🏆 Plateau Discovered: ${plateau.name}`);
+                }
             }
             
             passTurn() {
@@ -1130,19 +1335,43 @@
                 if (!food) return;
                 
                 if (food.type === 'ENERGY') {
+                    // Energy food - simple, no risk
                     this.player.energy = Math.min(100, this.player.energy + 30);
                     this.log('✓ Energy +30', '#00ff00');
                     this.createParticleEffect(this.player.q, this.player.r, 0x00ff00, 10);
                     this.showScorePopup(this.player.q, this.player.r, '+50', 0xffff00);
                     this.agent.onFeeding('ENERGY');
                 } else {
+                    // DNA food - USE EoP SYSTEM for risk/reward!
                     if (!this.player.genome.slots[food.gene]) {
-                        this.player.genome.slots[food.gene] = true;
-                        this.player.genome.instability += LOCI[food.gene].instability;
-                        this.log(`✓ DNA: ${food.gene}`, '#00ff00');
-                        this.createParticleEffect(this.player.q, this.player.r, food.color, 15);
-                        this.showScorePopup(this.player.q, this.player.r, '+200', 0x00ffff);
-                        this.agent.onFeeding('DNA');
+                        const cf = this.eopSystem.calculateCF(this.player, food, this.player.posture);
+                        const result = this.eopSystem.roll(this.player, food.gene, cf, this.player.posture);
+                        
+                        if (result.outcome === 'SI') {
+                            // SUCCESS!
+                            this.player.genome.slots[food.gene] = true;
+                            this.player.genome.instability = Math.max(0, this.player.genome.instability + result.instability);
+                            this.log(`✓ DNA: ${food.gene} [SI]`, '#00ff00');
+                            this.createParticleEffect(this.player.q, this.player.r, food.color, 15);
+                            this.showScorePopup(this.player.q, this.player.r, `+${result.score}`, 0x00ffff);
+                            this.agent.onFeeding('DNA');
+                        } else if (result.outcome === 'CS') {
+                            // CRITICAL FAILURE!
+                            this.player.genome.instability += result.instability;
+                            this.player.stunned = result.stun;
+                            this.log(`☠ CS! Stunned ${result.stun} turns`, '#ff0000');
+                            this.createParticleEffect(this.player.q, this.player.r, 0xff0000, 20);
+                            this.showScorePopup(this.player.q, this.player.r, `${result.score}`, 0xff0000);
+                            this.agent.addScore(result.score, 'CRITICAL FAILURE');
+                        } else {
+                            // MIXED/NEUTRAL
+                            this.player.genome.slots[food.gene] = true;
+                            this.player.genome.instability += result.instability;
+                            this.log(`~ DNA: ${food.gene} [MF]`, '#ffff00');
+                            this.createParticleEffect(this.player.q, this.player.r, food.color, 10);
+                            this.showScorePopup(this.player.q, this.player.r, `+${result.score}`, 0xffff00);
+                            this.agent.addScore(result.score, 'DNA MIXED');
+                        }
                     }
                     this.player.energy = Math.min(100, this.player.energy + 10);
                 }
@@ -1276,13 +1505,34 @@
             updatePredators() {
                 this.predators.forEach(pred => {
                     if (Math.random() < 0.4) {
-                        const dq = this.player.q - pred.q;
-                        const dr = this.player.r - pred.r;
-                        if (Math.abs(dq) > Math.abs(dr)) {
-                            pred.q += Math.sign(dq);
-                        } else {
-                            pred.r += Math.sign(dr);
+                        if (pred.behavior === 'chase' && pred.speed > 0) {
+                            // Chase player if within vision
+                            const dq = this.player.q - pred.q;
+                            const dr = this.player.r - pred.r;
+                            const dist = Math.abs(dq) + Math.abs(dr);
+                            
+                            if (dist <= pred.vision) {
+                                if (Math.abs(dq) > Math.abs(dr)) {
+                                    pred.q += Math.sign(dq);
+                                } else {
+                                    pred.r += Math.sign(dr);
+                                }
+                            }
+                        } else if (pred.behavior === 'patrol' && pred.speed > 0) {
+                            // Patrol back and forth
+                            pred.patrolCount++;
+                            if (pred.patrolCount >= 4) {
+                                pred.patrolCount = 0;
+                                pred.patrolDir *= -1;
+                            }
+                            
+                            if (Math.random() < 0.5) {
+                                pred.q += pred.patrolDir * pred.speed;
+                            } else {
+                                pred.r += pred.patrolDir * pred.speed;
+                            }
                         }
+                        // web type doesn't move (speed=0)
                     }
                 });
                 this.drawPredators();
@@ -1292,13 +1542,46 @@
                 this.predatorGraphics.clear();
                 this.predators.forEach(pred => {
                     const pos = this.hexGrid.hexToPixel(pred.q, pred.r);
-                    this.predatorGraphics.fillStyle(0xff0000, 0.9);
-                    this.predatorGraphics.beginPath();
-                    this.predatorGraphics.moveTo(pos.x - 8, pos.y - 8);
-                    this.predatorGraphics.lineTo(pos.x + 8, pos.y + 8);
-                    this.predatorGraphics.moveTo(pos.x + 8, pos.y - 8);
-                    this.predatorGraphics.lineTo(pos.x - 8, pos.y + 8);
-                    this.predatorGraphics.strokePath();
+                    
+                    // Vision radius
+                    this.predatorGraphics.fillStyle(pred.color, 0.1);
+                    this.predatorGraphics.fillCircle(pos.x, pos.y, this.hexSize * pred.vision);
+                    
+                    this.predatorGraphics.fillStyle(pred.color, 0.9);
+                    this.predatorGraphics.lineStyle(3, pred.color, 1);
+                    
+                    if (pred.type === 'JUMPING_SPIDER') {
+                        // X shape
+                        this.predatorGraphics.beginPath();
+                        this.predatorGraphics.moveTo(pos.x - 8, pos.y - 8);
+                        this.predatorGraphics.lineTo(pos.x + 8, pos.y + 8);
+                        this.predatorGraphics.moveTo(pos.x + 8, pos.y - 8);
+                        this.predatorGraphics.lineTo(pos.x - 8, pos.y + 8);
+                        this.predatorGraphics.strokePath();
+                    } else if (pred.type === 'DRAGONFLY') {
+                        // Diamond shape
+                        this.predatorGraphics.beginPath();
+                        this.predatorGraphics.moveTo(pos.x, pos.y - 10);
+                        this.predatorGraphics.lineTo(pos.x + 7, pos.y);
+                        this.predatorGraphics.lineTo(pos.x, pos.y + 10);
+                        this.predatorGraphics.lineTo(pos.x - 7, pos.y);
+                        this.predatorGraphics.closePath();
+                        this.predatorGraphics.fillPath();
+                        this.predatorGraphics.strokePath();
+                    } else if (pred.type === 'ORB_SPIDER') {
+                        // Web pattern
+                        this.predatorGraphics.fillCircle(pos.x, pos.y, 6);
+                        for (let i = 0; i < 8; i++) {
+                            const angle = i * Math.PI / 4;
+                            this.predatorGraphics.beginPath();
+                            this.predatorGraphics.moveTo(pos.x, pos.y);
+                            this.predatorGraphics.lineTo(
+                                pos.x + Math.cos(angle) * 15,
+                                pos.y + Math.sin(angle) * 15
+                            );
+                            this.predatorGraphics.strokePath();
+                        }
+                    }
                 });
             }
             
@@ -1393,6 +1676,35 @@
                 document.getElementById('total-food').textContent = this.agent.totalFood;
                 document.getElementById('total-dna').textContent = this.agent.totalDNA;
                 document.getElementById('total-dist').textContent = Math.floor(this.agent.totalDistance);
+                
+                // TOPOLOGY UI
+                const parityStatus = document.getElementById('parity-status');
+                if (parityStatus) {
+                    parityStatus.innerHTML = this.player.parityFlipped ? 
+                        'Parity: <span class="warning">FLIPPED</span>' : 
+                        'Parity: <span class="quantum">NORMAL</span>';
+                }
+                const seamCount = document.getElementById('seam-count');
+                if (seamCount) {
+                    seamCount.innerHTML = `Seams: <span class="stat">${this.seamCrossings}</span>`;
+                }
+                
+                // PLATEAU UI
+                const plateauCount = document.getElementById('plateau-count');
+                if (plateauCount) {
+                    plateauCount.textContent = this.museum.plateaus.length;
+                }
+                const plateauRecent = document.getElementById('plateau-recent');
+                if (plateauRecent) {
+                    if (this.museum.plateaus.length === 0) {
+                        plateauRecent.textContent = 'None yet';
+                    } else {
+                        const recent = this.museum.plateaus.slice(-3).reverse();
+                        plateauRecent.innerHTML = recent.map(p => 
+                            `${p.name} (G${p.generation})`
+                        ).join('<br>');
+                    }
+                }
                 
                 // Respawn food
                 this.foodSources.forEach(f => {
