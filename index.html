@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Möbius Savanna v7.0</title>
+    <title>Möbius Savanna v7.0 - 100K GPU Brain! [PATCHED]</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -90,7 +90,7 @@
 <body>
     <div id="game-container">
         <div id="legend">
-            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v7.0</h2>
+            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v7.0 [PATCHED]</h2>
             <div style="color: #888; font-size: 9px; margin-bottom: 10px;"><span class="gpu">100K GPU</span> | WebGL Compute | Full Fly Brain</div>
             
             <div class="section">
@@ -199,6 +199,16 @@
                     return;
                 }
                 
+                // Check for required extensions
+                const ext = this.gl.getExtension('EXT_color_buffer_float');
+                if (!ext) {
+                    console.warn('EXT_color_buffer_float not available, falling back to CPU');
+                    this.useCPU = true;
+                    this.state = new Float32Array(n * 4);
+                    this._initialize_golden();
+                    return;
+                }
+                
                 this.useCPU = false;
                 this.textureSize = Math.ceil(Math.sqrt(n));
                 
@@ -211,6 +221,14 @@
                 
                 // Compile shader
                 this.program = this.createShaderProgram();
+                
+                if (!this.program) {
+                    console.warn('Shader compilation failed, falling back to CPU');
+                    this.useCPU = true;
+                    this.state = new Float32Array(n * 4);
+                    this._initialize_golden();
+                    return;
+                }
                 
                 // Initialize state
                 this.state = new Float32Array(n * 4);
@@ -245,6 +263,12 @@
                 `);
                 gl.compileShader(vertexShader);
                 
+                if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                    console.error('Vertex shader compile error:', gl.getShaderInfoLog(vertexShader));
+                    this.useCPU = true;
+                    return null;
+                }
+                
                 const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
                 gl.shaderSource(fragmentShader, `#version 300 es
                     precision highp float;
@@ -274,10 +298,22 @@
                 `);
                 gl.compileShader(fragmentShader);
                 
+                if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                    console.error('Fragment shader compile error:', gl.getShaderInfoLog(fragmentShader));
+                    this.useCPU = true;
+                    return null;
+                }
+                
                 const program = gl.createProgram();
                 gl.attachShader(program, vertexShader);
                 gl.attachShader(program, fragmentShader);
                 gl.linkProgram(program);
+                
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    console.error('Shader program link error:', gl.getProgramInfoLog(program));
+                    this.useCPU = true;
+                    return null;
+                }
                 
                 return program;
             }
@@ -322,6 +358,14 @@
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                                        gl.TEXTURE_2D, this.outputTexture, 0);
                 
+                // Check framebuffer status
+                const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+                if (status !== gl.FRAMEBUFFER_COMPLETE) {
+                    console.error('Framebuffer incomplete, status:', status);
+                    this.useCPU = true;
+                    return;
+                }
+                
                 gl.viewport(0, 0, this.textureSize, this.textureSize);
                 gl.useProgram(this.program);
                 
@@ -362,7 +406,8 @@
         
         class MassiveFILAgent {
             constructor() {
-                this.active = false;
+                // PATCH 3: Auto-start AI
+                this.active = true; // Changed from false
                 this.currentFitness = 0;
                 this.bestFitness = 0;
                 this.decisions = 0;
@@ -370,6 +415,15 @@
                 
                 // 100,000 cell GPU-accelerated brain
                 this.brain = new GPUFILManifold(100000);
+                
+                // PATCH 2: Define sensory band structure
+                this.BANDS = {
+                    DIR_START: 0,        // 0..2047 directional salience (threat/food/mate)
+                    DIR_LEN:   2048,
+                    CHEM_START: 2560,    // 2560..3071 chemosensory (512)
+                    CHEM_LEN:   512,
+                    INT_START:  3584     // 3584.. for internal flags/state
+                };
                 
                 // Sensory/Motor architecture
                 this.sensory = [0, 4096];      // 4096 sensory neurons
@@ -380,6 +434,17 @@
                 
                 // Weights for massive compute
                 this.weights = this.initWeights();
+                
+                // SPATIAL WORKING MEMORY
+                this.dangerMap = new Map(); // key: "q,r" -> {threat: float, age: int}
+                this.visitedTiles = new Map(); // key: "q,r" -> {count: int, lastVisit: int}
+                this.boundaryMemory = new Map(); // key: "q,r" -> tick when hit
+                this.tick = 0; // Decision counter for memory decay
+                
+                // STUCK DETECTION
+                this.lastAction = null;
+                this.actionRepeatCount = 0;
+                this.recentFlee = null; // Track last flee direction to prevent oscillation
                 
                 // SCORING & PROGRESSION
                 this.score = 0;
@@ -414,11 +479,159 @@
                 return this.active;
             }
             
+            updateSpatialMemory(game) {
+                // Decay old memories
+                for (const [key, mem] of this.dangerMap.entries()) {
+                    mem.age++;
+                    mem.threat *= 0.95; // Decay threat over time
+                    if (mem.threat < 0.1 || mem.age > 50) {
+                        this.dangerMap.delete(key);
+                    }
+                }
+                
+                // Record current predator positions
+                game.predators.forEach(pred => {
+                    const key = `${pred.q},${pred.r}`;
+                    const threat = pred.speed === 0 ? 10.0 : (pred.speed * 5.0); // Stationary = high threat memory
+                    this.dangerMap.set(key, { threat, age: 0, type: pred.type });
+                    
+                    // Also mark adjacent tiles for stationary predators (web spiders)
+                    if (pred.speed === 0) {
+                        for (let dq = -2; dq <= 2; dq++) {
+                            for (let dr = -2; dr <= 2; dr++) {
+                                if (dq === 0 && dr === 0) continue;
+                                const adjKey = `${pred.q + dq},${pred.r + dr}`;
+                                const adjThreat = 5.0 / (Math.abs(dq) + Math.abs(dr));
+                                if (!this.dangerMap.has(adjKey) || this.dangerMap.get(adjKey).threat < adjThreat) {
+                                    this.dangerMap.set(adjKey, { threat: adjThreat, age: 0, type: 'web_zone' });
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Track visited tiles
+                const currentKey = `${game.player.q},${game.player.r}`;
+                if (this.visitedTiles.has(currentKey)) {
+                    const visit = this.visitedTiles.get(currentKey);
+                    visit.count++;
+                    visit.lastVisit = this.tick;
+                } else {
+                    this.visitedTiles.set(currentKey, { count: 1, lastVisit: this.tick });
+                }
+                
+                // Limit memory size
+                if (this.visitedTiles.size > 200) {
+                    // Remove oldest visits
+                    const sorted = Array.from(this.visitedTiles.entries())
+                        .sort((a, b) => a[1].lastVisit - b[1].lastVisit);
+                    for (let i = 0; i < 50; i++) {
+                        this.visitedTiles.delete(sorted[i][0]);
+                    }
+                }
+            }
+            
+            chooseSafeDirection(game, targetDq, targetDr) {
+                // Calculate preferred direction toward target
+                let preferredDir;
+                if (Math.abs(targetDq) > Math.abs(targetDr)) {
+                    preferredDir = targetDq > 0 ? 'RIGHT' : 'LEFT';
+                } else {
+                    preferredDir = targetDr > 0 ? 'DOWN' : 'UP';
+                }
+                
+                // Check if preferred direction is dangerous
+                const moves = {
+                    'RIGHT': { q: 1, r: 0 },
+                    'LEFT': { q: -1, r: 0 },
+                    'DOWN': { q: 0, r: 1 },
+                    'UP': { q: 0, r: -1 }
+                };
+                
+                const dirScores = {};
+                for (const [dir, delta] of Object.entries(moves)) {
+                    const newQ = game.player.q + delta.q;
+                    const newR = game.player.r + delta.r;
+                    const key = `${newQ},${newR}`;
+                    
+                    // Start with base score
+                    let score = 1.0;
+                    
+                    // Penalty for danger
+                    if (this.dangerMap.has(key)) {
+                        score -= this.dangerMap.get(key).threat;
+                    }
+                    
+                    // Bonus for moving toward target
+                    if (dir === preferredDir) {
+                        score += 2.0;
+                    }
+                    
+                    // Small penalty for repeatedly visited tiles
+                    if (this.visitedTiles.has(key)) {
+                        const visit = this.visitedTiles.get(key);
+                        score -= visit.count * 0.1;
+                    }
+                    
+                    dirScores[dir] = score;
+                }
+                
+                // Pick highest scoring direction
+                const best = Object.entries(dirScores).reduce((a, b) => a[1] > b[1] ? a : b);
+                return best[0];
+            }
+            
+            exploreWithMemory(game) {
+                // Explore toward least-visited areas, avoiding danger
+                const moves = {
+                    'RIGHT': { q: 1, r: 0 },
+                    'LEFT': { q: -1, r: 0 },
+                    'DOWN': { q: 0, r: 1 },
+                    'UP': { q: 0, r: -1 }
+                };
+                
+                const dirScores = {};
+                for (const [dir, delta] of Object.entries(moves)) {
+                    const newQ = game.player.q + delta.q;
+                    const newR = game.player.r + delta.r;
+                    const key = `${newQ},${newR}`;
+                    
+                    // Start with exploration bonus
+                    let score = 2.0;
+                    
+                    // Penalty for danger
+                    if (this.dangerMap.has(key)) {
+                        score -= this.dangerMap.get(key).threat * 1.5; // Stronger avoidance during exploration
+                    }
+                    
+                    // Penalty for visited tiles
+                    if (this.visitedTiles.has(key)) {
+                        const visit = this.visitedTiles.get(key);
+                        const recency = Math.max(0, 1.0 - (this.tick - visit.lastVisit) / 50);
+                        score -= (visit.count * 0.5 + recency * 2.0);
+                    } else {
+                        score += 3.0; // Big bonus for unvisited tiles
+                    }
+                    
+                    // Avoid boundaries we've tested recently
+                    if (this.boundaryMemory.has(key)) {
+                        score -= 1.0;
+                    }
+                    
+                    dirScores[dir] = score;
+                }
+                
+                // Pick highest scoring direction
+                const best = Object.entries(dirScores).reduce((a, b) => a[1] > b[1] ? a : b);
+                return best[0];
+            }
+            
             encodeSensory(game) {
                 const sensory = new Float32Array(4096);
                 
-                // CRITICAL: High-res directional encoding
-                const visualRes = 2048;
+                // PATCH 2: Use defined bands
+                const {DIR_START, DIR_LEN, CHEM_START, CHEM_LEN, INT_START} = this.BANDS;
+                const visualRes = DIR_LEN; // 2048
                 
                 // THREATS - SUPER HIGH SALIENCE
                 game.predators.forEach(pred => {
@@ -434,7 +647,7 @@
                         const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
                         // Wide activation so it's hard to miss
                         for (let offset = -30; offset <= 30; offset++) {
-                            const i = (idx + offset + visualRes) % visualRes;
+                            const i = (DIR_START + ((idx + offset + visualRes) % visualRes));
                             sensory[i] = Math.max(sensory[i], threat * Math.exp(-offset * offset / 80));
                         }
                     }
@@ -456,15 +669,14 @@
                     
                     const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
                     for (let offset = -15; offset <= 15; offset++) {
-                        const i = (idx + offset + visualRes) % visualRes;
+                        const i = (DIR_START + ((idx + offset + visualRes) % visualRes));
                         sensory[i] += foodSignal * Math.exp(-offset * offset / 30) * 0.5;
                     }
                 });
                 
                 // CHEMOSENSORY LAYER (512 neurons - directional smell)
-                const chemBase = 2048;
-                for (let i = 0; i < 512; i++) {
-                    const angle = (i / 512) * 2 * Math.PI;
+                for (let i = 0; i < CHEM_LEN; i++) {
+                    const angle = (i / CHEM_LEN) * 2 * Math.PI;
                     const dx = Math.cos(angle);
                     const dy = Math.sin(angle);
                     
@@ -484,7 +696,7 @@
                         }
                     });
                     
-                    sensory[chemBase + i] = smell * hungerBoost;
+                    sensory[CHEM_START + i] = smell * hungerBoost;
                 }
                 
                 // Mates - STRONG DRIVE for adults
@@ -499,39 +711,76 @@
                         
                         const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
                         for (let offset = -18; offset <= 18; offset++) {
-                            const i = (idx + offset + visualRes) % visualRes;
+                            const i = (DIR_START + ((idx + offset + visualRes) % visualRes));
                             sensory[i] += mateSignal * Math.exp(-offset * offset / 35) * 0.6;
                         }
                     });
                 }
                 
-                // Internal state - BOOSTED DRIVES
-                sensory[2048] = game.player.stage === 'LARVA' ? 5.0 : 0.0;
-                sensory[2049] = game.player.stage === 'PUPA' ? 5.0 : 0.0;
-                sensory[2050] = game.player.stage === 'ADULT' ? 5.0 : 0.0;
-                sensory[2051] = (game.player.age / game.player.maxAge) * 4.0;
-                sensory[2052] = (game.player.energy / 100) * 3.0;
-                sensory[2053] = game.brood ? 10.0 : 0.0; // URGENT: select offspring!
+                // Internal state - BOOSTED DRIVES (using INT_START band)
+                sensory[INT_START + 0] = game.player.stage === 'LARVA' ? 5.0 : 0.0;
+                sensory[INT_START + 1] = game.player.stage === 'PUPA' ? 5.0 : 0.0;
+                sensory[INT_START + 2] = game.player.stage === 'ADULT' ? 5.0 : 0.0;
+                sensory[INT_START + 3] = (game.player.age / game.player.maxAge) * 4.0;
+                sensory[INT_START + 4] = (game.player.energy / 100) * 3.0;
+                sensory[INT_START + 5] = game.brood ? 10.0 : 0.0; // URGENT: select offspring!
                 
                 const onFood = game.foodSources.some(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
-                sensory[2054] = onFood ? 8.0 : 0.0; // STRONG: eat now!
+                sensory[INT_START + 6] = onFood ? 8.0 : 0.0; // STRONG: eat now!
                 
                 const nearMate = game.npcFlies.some(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
-                sensory[2055] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 9.0 : 0.0; // STRONG: mate now!
+                sensory[INT_START + 7] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 9.0 : 0.0; // STRONG: mate now!
                 
                 // Energy urgency - CRITICAL when low
                 if (game.player.energy < 40) {
-                    sensory[2056] = 12.0; // STARVING!
+                    sensory[INT_START + 8] = 12.0; // STARVING!
                 } else if (game.player.energy < 60) {
-                    sensory[2056] = 6.0; // Hungry
+                    sensory[INT_START + 8] = 6.0; // Hungry
                 } else {
-                    sensory[2056] = 0.0;
+                    sensory[INT_START + 8] = 0.0;
                 }
                 
                 // Mating urge for adults without brood - VERY STRONG
                 if (game.player.stage === 'ADULT' && !game.brood) {
-                    sensory[2057] = 12.0; // VERY STRONG breeding drive
+                    sensory[INT_START + 9] = 12.0; // VERY STRONG breeding drive
                 }
+                
+                // MEMORY-BASED DANGER (spatial working memory)
+                // Sample danger map in 8 cardinal/ordinal directions
+                const dangerDirs = [
+                    { angle: 0, dq: 1, dr: 0 },           // E
+                    { angle: Math.PI/4, dq: 1, dr: -1 },  // NE
+                    { angle: Math.PI/2, dq: 0, dr: -1 },  // N
+                    { angle: 3*Math.PI/4, dq: -1, dr: -1 },// NW
+                    { angle: Math.PI, dq: -1, dr: 0 },    // W
+                    { angle: 5*Math.PI/4, dq: -1, dr: 1 },// SW
+                    { angle: 3*Math.PI/2, dq: 0, dr: 1 }, // S
+                    { angle: 7*Math.PI/4, dq: 1, dr: 1 }  // SE
+                ];
+                
+                dangerDirs.forEach((dir, i) => {
+                    let memDanger = 0;
+                    // Check 3 tiles in this direction
+                    for (let dist = 1; dist <= 3; dist++) {
+                        const checkQ = game.player.q + dir.dq * dist;
+                        const checkR = game.player.r + dir.dr * dist;
+                        const key = `${checkQ},${checkR}`;
+                        
+                        if (this.dangerMap.has(key)) {
+                            const danger = this.dangerMap.get(key);
+                            memDanger += danger.threat / dist; // Closer = stronger signal
+                        }
+                    }
+                    
+                    // Inject remembered danger into directional layer
+                    if (memDanger > 0.1) {
+                        const idx = Math.floor(((dir.angle + Math.PI) / (2 * Math.PI)) * visualRes);
+                        for (let offset = -10; offset <= 10; offset++) {
+                            const sIdx = (DIR_START + ((idx + offset + visualRes) % visualRes));
+                            sensory[sIdx] += memDanger * Math.exp(-offset * offset / 20) * 0.3;
+                        }
+                    }
+                });
                 
                 return sensory;
             }
@@ -578,6 +827,9 @@
                 this.brain.evolve();
                 this.brain.evolve();
                 
+                // PATCH 1: Sync GPU → CPU after evolves
+                this.brain.downloadState();   // ensure reads reflect GPU evolution
+                
                 // Motor output from brain state
                 const motor = new Float32Array(22176);
                 
@@ -586,28 +838,25 @@
                     motor[i] = this.brain.state[(77824 + i) * 4];
                 }
                 
+                // PATCH 2: Use band constants for direct responses
+                const ON_FOOD = sensory[this.BANDS.INT_START + 6] > 5.0;
+                const NEAR_MATE = sensory[this.BANDS.INT_START + 7] > 5.0;
+                const STARVING = sensory[this.BANDS.INT_START + 8] > 8.0;
+                const BREED_DRIVE = sensory[this.BANDS.INT_START + 9];
+                
                 // DIRECT BEHAVIORAL RESPONSES FROM SENSORY STATE
-                // These bypass the weak sparse connections and respond immediately
-                
-                // Feed response - DIRECTLY from sensory
-                const onFood = sensory[2054] > 5.0; // Direct check
-                motor[20000] = onFood ? 20.0 : 0.0; // VERY HIGH
-                
-                // Mate response - DIRECTLY from sensory with STRONG breeding drive contribution
-                const nearMate = sensory[2055] > 5.0; // Direct check
-                const breedingDrive = sensory[2057] * 2.5; // Amplify breeding drive!
-                motor[20500] = nearMate ? 25.0 : breedingDrive; // VERY HIGH when near, strong drive otherwise
-                
-                // Offspring selection - DIRECTLY from sensory
-                motor[21000] = sensory[2053]; // Pass through directly (10.0 when brood exists)
+                motor[20000] = ON_FOOD ? 20.0 : 0.0; // VERY HIGH
+                motor[20500] = NEAR_MATE ? 25.0 : BREED_DRIVE * 2.5; // VERY HIGH when near, strong drive otherwise
+                motor[21000] = sensory[this.BANDS.INT_START + 5]; // Offspring selection (10.0 when brood exists)
                 
                 // Hunger modulation - boost food-seeking in motor layer
-                if (sensory[2056] > 8.0) { // Starving
+                if (STARVING) {
                     // Boost motor responses toward food signals
-                    for (let i = 0; i < 2048; i++) {
-                        if (sensory[i] > 2.0) { // Food signal
+                    for (let i = 0; i < this.BANDS.DIR_LEN; i++) {
+                        const s = sensory[this.BANDS.DIR_START + i];
+                        if (s > 2.0) { // Food signal
                             const motorIdx = (i * 4) % 8192;
-                            motor[motorIdx] += sensory[i] * 3.0; // STRONG boost
+                            motor[motorIdx] += s * 3.0; // STRONG boost
                         }
                     }
                 }
@@ -618,33 +867,54 @@
             decide(game) {
                 if (!this.active) return null;
                 this.decisions++;
+                this.tick++;
+                
+                // UPDATE WORKING MEMORY
+                this.updateSpatialMemory(game);
+                this.cleanBoundaryMemory();
+                
+                // Memory diagnostics (occasional)
+                if (this.tick % 50 === 0) {
+                    console.log(`MEMORY: ${this.dangerMap.size} danger zones, ${this.visitedTiles.size} visited, ${this.boundaryMemory.size} boundaries`);
+                }
                 
                 const sensory = this.encodeSensory(game);
                 
-                // Calculate max threat
+                // PATCH 2: Calculate max threat using DIR band
                 let maxThreat = 0;
                 let threatAngle = null;
-                for (let i = 0; i < 2048; i++) {
-                    if (sensory[i] > maxThreat) {
-                        maxThreat = sensory[i];
-                        threatAngle = (i / 2048) * 2 * Math.PI - Math.PI;
+                for (let i = 0; i < this.BANDS.DIR_LEN; i++) {
+                    const v = sensory[this.BANDS.DIR_START + i];
+                    if (v > maxThreat) {
+                        maxThreat = v;
+                        threatAngle = (i / this.BANDS.DIR_LEN) * 2 * Math.PI - Math.PI;
                     }
                 }
                 
                 // Check if we're on important business
-                const onMission = (game.player.stage === 'ADULT' && !game.brood) || sensory[2056] > 8.0;
-                const fleeThreshold = onMission ? 6.0 : 4.0; // Higher threshold when on mission
+                const onMission = (game.player.stage === 'ADULT' && !game.brood) || sensory[this.BANDS.INT_START + 8] > 8.0;
+                const fleeThreshold = onMission ? 7.0 : 5.0; // Raised thresholds to reduce flee spam
                 
-                // If in IMMEDIATE DANGER, flee
+                // ANTI-OSCILLATION: Don't flee if we just fled in the opposite direction
                 if (maxThreat > fleeThreshold && threatAngle !== null) {
                     const escapeAngle = threatAngle + Math.PI;
                     const normalizedAngle = ((escapeAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
                     const directionIndex = Math.round((normalizedAngle / (Math.PI / 2))) % 4;
                     const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
+                    const escapeDir = dirs[directionIndex];
                     
-                    this.currentStrategy = 'FLEE_' + dirs[directionIndex];
-                    console.log(`FLEEING! Threat=${maxThreat.toFixed(2)}, Angle=${(threatAngle*180/Math.PI).toFixed(0)}°, Escape=${dirs[directionIndex]}`);
-                    return { type: 'MOVE', direction: dirs[directionIndex] };
+                    // Check if this is opposite of recent flee
+                    const opposites = { 'RIGHT': 'LEFT', 'LEFT': 'RIGHT', 'UP': 'DOWN', 'DOWN': 'UP' };
+                    if (this.recentFlee && this.recentFlee.dir === opposites[escapeDir] && 
+                        this.tick - this.recentFlee.tick < 3) {
+                        // Skip this flee - we're oscillating
+                        console.log(`Skipping flee oscillation: ${escapeDir} vs recent ${this.recentFlee.dir}`);
+                    } else {
+                        this.currentStrategy = 'FLEE_' + escapeDir;
+                        this.recentFlee = { dir: escapeDir, tick: this.tick };
+                        console.log(`FLEEING! Threat=${maxThreat.toFixed(2)}, Angle=${(threatAngle*180/Math.PI).toFixed(0)}°, Escape=${escapeDir}`);
+                        return { type: 'MOVE', direction: escapeDir };
+                    }
                 }
                 
                 const motor = this.forward(sensory, game);
@@ -691,20 +961,22 @@
                     if (nearest.npc && nearest.dist < 15) { // Increased from 10 to 15
                         const dq = nearest.npc.q - game.player.q;
                         const dr = nearest.npc.r - game.player.r;
-                        let dir;
-                        if (Math.abs(dq) > Math.abs(dr)) {
-                            dir = dq > 0 ? 'RIGHT' : 'LEFT';
-                        } else {
-                            dir = dr > 0 ? 'DOWN' : 'UP';
-                        }
+                        let dir = this.chooseSafeDirection(game, dq, dr);
                         this.currentStrategy = 'SEEK_MATE';
-                        console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist}`);
+                        
+                        // Log if we're detouring due to memory
+                        const straightDir = Math.abs(dq) > Math.abs(dr) ? (dq > 0 ? 'RIGHT' : 'LEFT') : (dr > 0 ? 'DOWN' : 'UP');
+                        if (dir !== straightDir) {
+                            console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist} [avoiding danger: ${straightDir}→${dir}]`);
+                        } else {
+                            console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist}`);
+                        }
                         return { type: 'MOVE', direction: dir };
                     }
                 }
                 
                 // 5. ACTIVE FOOD-SEEKING - when hungry
-                if (sensory[2056] > 5.0 || game.player.energy < 40) {
+                if (sensory[this.BANDS.INT_START + 8] > 5.0 || game.player.energy < 40) {
                     const foodTargets = game.foodSources.filter(f => {
                         if (f.respawnTimer > 0) return false;
                         if (f.type === 'DNA' && game.player.genome.slots[f.gene]) return false;
@@ -720,14 +992,16 @@
                         if (nearest.food && nearest.dist < 15) { // Increased from 12 to 15
                             const dq = nearest.food.q - game.player.q;
                             const dr = nearest.food.r - game.player.r;
-                            let dir;
-                            if (Math.abs(dq) > Math.abs(dr)) {
-                                dir = dq > 0 ? 'RIGHT' : 'LEFT';
-                            } else {
-                                dir = dr > 0 ? 'DOWN' : 'UP';
-                            }
+                            let dir = this.chooseSafeDirection(game, dq, dr);
                             this.currentStrategy = 'SEEK_FOOD';
-                            console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist}`);
+                            
+                            // Log if we're detouring due to memory
+                            const straightDir = Math.abs(dq) > Math.abs(dr) ? (dq > 0 ? 'RIGHT' : 'LEFT') : (dr > 0 ? 'DOWN' : 'UP');
+                            if (dir !== straightDir) {
+                                console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist} [avoiding danger: ${straightDir}→${dir}]`);
+                            } else {
+                                console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist}`);
+                            }
                             return { type: 'MOVE', direction: dir };
                         }
                     }
@@ -743,12 +1017,12 @@
                     }
                 }
                 
-                // EXPLORATION: If motor signal is weak, add some randomness
-                if (maxVal < 0.5 && Math.random() < 0.3) {
-                    const randomDir = ['RIGHT', 'DOWN', 'LEFT', 'UP'][Math.floor(Math.random() * 4)];
-                    this.currentStrategy = 'EXPLORE';
-                    console.log('EXPLORING:', randomDir);
-                    return { type: 'MOVE', direction: randomDir };
+                // EXPLORATION: If motor signal is weak, use memory-guided exploration
+                if (maxVal < 0.5) {
+                    const dir = this.exploreWithMemory(game);
+                    this.currentStrategy = 'EXPLORE_MEM';
+                    console.log('EXPLORING (memory-guided):', dir);
+                    return { type: 'MOVE', direction: dir };
                 }
                 
                 // Convert to cardinal direction
@@ -766,9 +1040,9 @@
                 r += Object.keys(game.player.genome.slots).filter(k => game.player.genome.slots[k]).length * 30;
                 r += game.player.stage === 'ADULT' ? 60 : 0;
                 
-                const minPredDist = Math.min(...game.predators.map(p => 
-                    Math.abs(p.q - game.player.q) + Math.abs(p.r - game.player.r)
-                ));
+                // PATCH 4: Safety guard for empty predators array
+                const dists = game.predators.map(p => Math.abs(p.q - game.player.q) + Math.abs(p.r - game.player.r));
+                const minPredDist = dists.length ? Math.min(...dists) : 99;
                 r += minPredDist > 4 ? 40 : (minPredDist < 2 ? -100 : -20);
                 
                 this.currentFitness = r;
@@ -805,6 +1079,27 @@
             onGeneration(gen) {
                 this.generationsReached = Math.max(this.generationsReached, gen);
                 this.addScore(gen * 100, `GEN ${gen} REACHED`);
+                
+                // Clear spatial memory on generation change
+                this.dangerMap.clear();
+                this.visitedTiles.clear();
+                this.boundaryMemory.clear();
+                console.log('Memory cleared for new generation');
+            }
+            
+            onBoundaryWrap(q, r) {
+                // Remember we hit a boundary here
+                const key = `${q},${r}`;
+                this.boundaryMemory.set(key, this.tick); // Store tick, not boolean
+            }
+            
+            cleanBoundaryMemory() {
+                // Remove boundaries older than 30 ticks
+                for (const [key, tickStored] of this.boundaryMemory.entries()) {
+                    if (this.tick - tickStored > 30) {
+                        this.boundaryMemory.delete(key);
+                    }
+                }
             }
             
             onSurvival(age, stage) {
@@ -1044,11 +1339,14 @@
                 this.setupInput();
                 this.updateAllUI();
                 
+                // PATCH 3: Update UI to reflect auto-on AI
+                document.getElementById('ai-status').innerHTML = 'Status: <span class="gpu">THINKING</span>';
+                
                 this.brood = null;
                 this.eventLog = [];
                 
                 this.log('100K GPU FIL Brain - ONLINE!', '#00ff00');
-                this.log('Press A to activate neural net', '#ff00ff');
+                this.log('AI AUTO-ENABLED! Press A to toggle', '#ff00ff');
                 
                 // AI tick
                 this.time.addEvent({
@@ -1237,8 +1535,14 @@
                 if (direction === 'RIGHT') newQ += 1;
                 
                 // Wrap HORIZONTALLY (q: -15 to 15)
-                if (newQ < -15) newQ = 15;
-                if (newQ > 15) newQ = -15;
+                if (newQ < -15) {
+                    newQ = 15;
+                    this.agent.onBoundaryWrap(this.player.q, this.player.r);
+                }
+                if (newQ > 15) {
+                    newQ = -15;
+                    this.agent.onBoundaryWrap(this.player.q, this.player.r);
+                }
                 
                 // Wrap VERTICALLY with parity flip (Möbius twist)
                 if (newR < -10) {
@@ -1246,11 +1550,13 @@
                     this.player.parityFlipped = !this.player.parityFlipped;
                     this.log('Möbius wrap: top→bottom', '#00ffff');
                     this.agent.addScore(25, 'TOPOLOGY');
+                    this.agent.onBoundaryWrap(this.player.q, this.player.r);
                 } else if (newR > 10) {
                     newR = -10;
                     this.player.parityFlipped = !this.player.parityFlipped;
                     this.log('Möbius wrap: bottom→top', '#00ffff');
                     this.agent.addScore(25, 'TOPOLOGY');
+                    this.agent.onBoundaryWrap(this.player.q, this.player.r);
                 }
                 
                 // SEAM CROSSING at r=0
@@ -1719,6 +2025,45 @@
                 console.log(message);
             }
         }
+        
+        // ============================================================================
+        // PATCH 5: SELF-TESTS
+        // ============================================================================
+        
+        // TEST: GPU manifold updates state (only meaningful if WebGL2 is present)
+        (function testGPUState() {
+            const m = new GPUFILManifold(256);
+            if (!m.useCPU) {
+                const before = m.state.slice(0, 8).map(v => v.toFixed(4)).join(',');
+                console.log('TEST: GPU state before evolve:', before);
+                m.evolve();
+                m.downloadState();
+                const after = m.state.slice(0, 8).map(v => v.toFixed(4)).join(',');
+                console.log('TEST: GPU state after evolve+download:', after);
+                if (before === after) {
+                    console.error('TEST ❌ GPU state did not change after evolve+download');
+                    console.log('TEST: This suggests shader may not be executing or readback failed');
+                    console.log('TEST: Game will fall back to CPU computation in neural forward pass');
+                } else {
+                    console.log('TEST ✔ GPU evolve+download changes state');
+                }
+            } else {
+                console.log('TEST ◦ GPU fallback (CPU path), skipped evolve test');
+            }
+        })();
+        
+        // TEST: Sensory bands don't collide
+        (function testBands() {
+            const agent = new MassiveFILAgent();
+            const {DIR_START, DIR_LEN, CHEM_START, CHEM_LEN, INT_START} = agent.BANDS;
+            if (DIR_START + DIR_LEN > CHEM_START) {
+                console.error('TEST ❌ DIR overlaps CHEM');
+            } else if (CHEM_START + CHEM_LEN > INT_START) {
+                console.error('TEST ❌ CHEM overlaps INT');
+            } else {
+                console.log('TEST ✔ Sensory bands non-overlapping');
+            }
+        })();
         
         const config = {
             type: Phaser.AUTO,
