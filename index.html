@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Möbius Savanna v7.0.8 [PATCHED]</title>
+    <title>Möbius Savanna v8.0 - FRUIT FLY BRAIN!</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -19,7 +19,7 @@
             height: 100vh;
         }
         #legend {
-            width: 360px;
+            width: 380px;
             background: rgba(0, 0, 0, 0.95);
             color: #00ff00;
             padding: 12px;
@@ -57,17 +57,10 @@
             color: #00ffff;
             font-weight: bold;
         }
-        .plateau {
-            color: #00ff00;
-            font-weight: bold;
-        }
-        .ai {
+        .brain {
             color: #ff00ff;
             font-weight: bold;
-        }
-        .mate {
-            color: #ff69b4;
-            font-weight: bold;
+            text-shadow: 0 0 3px #ff00ff;
         }
         .gpu {
             color: #00ff00;
@@ -78,20 +71,13 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
-        .plateau-entry {
-            background: rgba(0, 255, 0, 0.1);
-            border-left: 2px solid #00ff00;
-            padding: 3px;
-            margin: 2px 0;
-            font-size: 9px;
-        }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="legend">
-            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v7.0 [PATCHED]</h2>
-            <div style="color: #888; font-size: 9px; margin-bottom: 10px;"><span class="gpu">100K GPU</span> | WebGL Compute | Full Fly Brain</div>
+            <h2 style="color: #ff6b6b; margin: 0 0 8px 0; font-size: 15px;">MÖBIUS SAVANNA v8.0</h2>
+            <div style="color: #888; font-size: 9px; margin-bottom: 10px;"><span class="brain">FRUIT FLY</span> | <span class="gpu">100K FIL</span> | Drosophila Circuits</div>
             
             <div class="section">
                 <h3>CONTROLS</h3>
@@ -99,22 +85,17 @@
                 <div class="key"><b>SPACE</b> Pass turn</div>
                 <div class="key"><b>A</b> Toggle AI</div>
                 <div class="key"><b>E</b> Pickup DNA/Food</div>
-                <div class="key"><b>M</b> Mate with nearby fly</div>
+                <div class="key"><b>M</b> Mate</div>
                 <div class="key"><b>1-9</b> Select offspring</div>
             </div>
 
             <div class="section">
-                <h3>TOPOLOGY</h3>
-                <div class="key" id="parity-status">Parity: <span class="quantum">NORMAL</span></div>
-                <div class="key" id="seam-count">Seams: <span class="stat">0</span></div>
-            </div>
-
-            <div class="section">
-                <h3>PLATEAUS</h3>
-                <div class="key">Found: <span id="plateau-count" class="plateau">0</span></div>
-                <div id="plateau-recent" style="font-size: 8px; color: #00ff00;">
-                    None yet
-                </div>
+                <h3>FLY BRAIN</h3>
+                <div class="key" id="ai-status">Status: <span class="brain">THINKING</span></div>
+                <div class="key">CX Heading: <span id="cx-heading" class="brain">0°</span></div>
+                <div class="key">MB Valence: <span id="mb-valence" class="stat">0.0</span></div>
+                <div class="key">Dopamine: <span id="dopamine" class="stat">0.0</span></div>
+                <div class="key">Action: <span id="ai-strategy" class="brain">--</span></div>
             </div>
 
             <div class="section">
@@ -125,56 +106,30 @@
             </div>
 
             <div class="section">
-                <h3>LIFETIME STATS</h3>
-                <div class="key">Mates: <span id="total-mates" class="stat">0</span></div>
-                <div class="key">Foods: <span id="total-food" class="stat">0</span></div>
-                <div class="key">DNA: <span id="total-dna" class="stat">0</span></div>
-                <div class="key">Dist: <span id="total-dist" class="stat">0</span></div>
-            </div>
-
-            <div class="section">
-                <h3>GPU FIL BRAIN</h3>
-                <div class="key" id="ai-status">Status: <span class="ai">OFF</span></div>
-                <div class="key">Cells: <span class="gpu">100,000</span></div>
-                <div class="key">GPU: <span class="gpu" id="gpu-status">READY</span></div>
-                <div class="key">Action: <span id="ai-strategy" class="ai">--</span></div>
-                <div class="key">Reward: <span id="ai-fitness" class="stat">0</span></div>
-            </div>
-
-            <div class="section">
                 <h3>LIFECYCLE</h3>
                 <div class="key">Stage: <span id="stage-display" class="stat">LARVA</span></div>
-                <div class="key">Age: <span id="age-display" class="stat">0</span>/<span id="max-age-display">6</span></div>
+                <div class="key">Age: <span id="age-display" class="stat">0</span>/<span id="max-age-display">30</span></div>
                 <div class="key">Gen: <span id="gen-display" class="stat">1</span></div>
                 <div class="key">Energy: <span id="energy-display" class="stat">100</span>%</div>
-                <div class="key" id="death-status" style="display: none;"><span class="danger">DEAD</span></div>
-                <div class="key" id="can-mate" style="display: none;"><span class="mate">Can mate!</span></div>
-                <div class="key" id="has-brood" style="display: none;"><span class="mate">Brood! Press 1-9</span></div>
+                <div class="key" id="has-brood" style="display: none;"><span style="color:#ff69b4">Brood! Press 1-9</span></div>
             </div>
 
             <div class="section">
                 <h3>GENOME</h3>
                 <div class="key">Loci: <span id="loci-count" class="stat">4</span></div>
                 <div class="key">Instab: <span id="instability-display" class="stat">3</span></div>
-                <div class="key">DNA Items: <span id="dna-count" class="stat">0</span></div>
             </div>
 
             <div class="section">
                 <h3>NEARBY</h3>
                 <div class="key">NPCs: <span id="npc-count" class="stat">0</span></div>
                 <div class="key">Food: <span id="food-count" class="stat">0</span></div>
-                <div id="predator-display" style="color: #ff6600; font-size: 9px;">
-                    <div class="key">Threats: None</div>
-                </div>
             </div>
 
             <div class="section">
-                <h3>SHAPES</h3>
-                <div class="key">● You (red)</div>
-                <div class="key">● NPCs (pink)</div>
-                <div class="key">◆ DNA Food (brown/orange)</div>
-                <div class="key">○ Energy Food (green)</div>
-                <div class="key">✖ Predators</div>
+                <h3>MEMORY</h3>
+                <div class="key">Danger: <span id="mem-danger" class="stat">0</span></div>
+                <div class="key">Visited: <span id="mem-visited" class="stat">0</span></div>
             </div>
         </div>
         <div id="phaser-canvas"></div>
@@ -187,7 +142,7 @@
         
         class GPUFILManifold {
             constructor(n) {
-                this.n = n; // 100,000 cells
+                this.n = n;
                 this.canvas = document.createElement('canvas');
                 this.gl = this.canvas.getContext('webgl2');
                 
@@ -199,7 +154,6 @@
                     return;
                 }
                 
-                // Check for required extensions
                 const ext = this.gl.getExtension('EXT_color_buffer_float');
                 if (!ext) {
                     console.warn('EXT_color_buffer_float not available, falling back to CPU');
@@ -212,14 +166,9 @@
                 this.useCPU = false;
                 this.textureSize = Math.ceil(Math.sqrt(n));
                 
-                // Create textures for state (p, q, scale, curvature)
                 this.stateTexture = this.createTexture();
                 this.outputTexture = this.createTexture();
-                
-                // Create framebuffer
                 this.framebuffer = this.gl.createFramebuffer();
-                
-                // Compile shader
                 this.program = this.createShaderProgram();
                 
                 if (!this.program) {
@@ -230,7 +179,6 @@
                     return;
                 }
                 
-                // Initialize state
                 this.state = new Float32Array(n * 4);
                 this._initialize_golden();
                 this.uploadState();
@@ -265,7 +213,6 @@
                 
                 if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
                     console.error('Vertex shader compile error:', gl.getShaderInfoLog(vertexShader));
-                    this.useCPU = true;
                     return null;
                 }
                 
@@ -275,7 +222,6 @@
                     in vec2 texCoord;
                     out vec4 outColor;
                     uniform sampler2D stateTexture;
-                    uniform float phi;
                     
                     void main() {
                         vec4 state = texture(stateTexture, texCoord);
@@ -300,7 +246,6 @@
                 
                 if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
                     console.error('Fragment shader compile error:', gl.getShaderInfoLog(fragmentShader));
-                    this.useCPU = true;
                     return null;
                 }
                 
@@ -311,7 +256,6 @@
                 
                 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
                     console.error('Shader program link error:', gl.getProgramInfoLog(program));
-                    this.useCPU = true;
                     return null;
                 }
                 
@@ -339,8 +283,6 @@
             
             evolve() {
                 if (this.useCPU) {
-                    // CPU fallback
-                    const phi = (1 + Math.sqrt(5)) / 2;
                     for (let i = 0; i < this.n; i++) {
                         const p = this.state[i * 4];
                         const q = this.state[i * 4 + 1];
@@ -352,13 +294,11 @@
                     return;
                 }
                 
-                // GPU evolution
                 const gl = this.gl;
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
                                        gl.TEXTURE_2D, this.outputTexture, 0);
                 
-                // Check framebuffer status
                 const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
                 if (status !== gl.FRAMEBUFFER_COMPLETE) {
                     console.error('Framebuffer incomplete, status:', status);
@@ -373,7 +313,6 @@
                 gl.bindTexture(gl.TEXTURE_2D, this.stateTexture);
                 gl.uniform1i(gl.getUniformLocation(this.program, 'stateTexture'), 0);
                 
-                // Draw quad
                 const posBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -386,7 +325,6 @@
                 
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 
-                // Swap textures
                 [this.stateTexture, this.outputTexture] = [this.outputTexture, this.stateTexture];
             }
             
@@ -401,52 +339,270 @@
         }
         
         // ============================================================================
-        // 100K CELL FIL NEURAL AGENT
+        // FRUIT FLY CIRCUIT MODULES
         // ============================================================================
         
-        class MassiveFILAgent {
-            constructor() {
-                // PATCH 3: Auto-start AI
-                this.active = true; // Changed from false
-                this.currentFitness = 0;
-                this.bestFitness = 0;
-                this.decisions = 0;
-                this.currentStrategy = 'EXPLORE';
+        // CX Ring Attractor - Heading stabilization
+        class CXRing {
+            constructor(M = 256) {
+                this.M = M;
+                this.r = new Float32Array(M);
+                this.K = 4; // kernel width
                 
-                // 100,000 cell GPU-accelerated brain
-                this.brain = new GPUFILManifold(100000);
-                
-                // PATCH 2: Define sensory band structure
-                this.BANDS = {
-                    DIR_START: 0,        // 0..2047 directional salience (threat/food/mate)
-                    DIR_LEN:   2048,
-                    CHEM_START: 2560,    // 2560..3071 chemosensory (512)
-                    CHEM_LEN:   512,
-                    INT_START:  3584     // 3584.. for internal flags/state
+                // Mexican hat weights
+                this.W = {
+                    center: 0.5,
+                    exc: new Float32Array(this.K + 1),
+                    inh: new Float32Array(this.K + 1)
                 };
                 
-                // Sensory/Motor architecture
-                this.sensory = [0, 4096];      // 4096 sensory neurons
-                this.hidden1 = [4096, 28672];  // 24576 hidden neurons
-                this.hidden2 = [28672, 53248]; // 24576 hidden neurons  
-                this.hidden3 = [53248, 77824]; // 24576 hidden neurons
-                this.motor = [77824, 100000];  // 22176 motor neurons
+                // Excitatory: drops off with distance
+                for (let k = 1; k <= this.K; k++) {
+                    this.W.exc[k] = 0.3 * Math.exp(-k * k / 4.0);
+                    this.W.inh[k] = -0.15 * Math.exp(-k * k / 8.0);
+                }
                 
-                // Weights for massive compute
-                this.weights = this.initWeights();
+                this.wrapInh = 2; // Broader inhibition
+            }
+            
+            step(inputBump, gain = 1.0) {
+                const out = new Float32Array(this.M);
                 
-                // SPATIAL WORKING MEMORY
-                this.dangerMap = new Map(); // key: "q,r" -> {threat: float, age: int}
-                this.visitedTiles = new Map(); // key: "q,r" -> {count: int, lastVisit: int}
-                this.boundaryMemory = new Map(); // key: "q,r" -> tick when hit
-                this.tick = 0; // Decision counter for memory decay
+                for (let i = 0; i < this.M; i++) {
+                    let s = this.W.center * this.r[i];
+                    
+                    // Local excitation + broader inhibition
+                    for (let k = 1; k <= this.K; k++) {
+                        const il = (i - k + this.M) % this.M;
+                        const ir = (i + k) % this.M;
+                        s += this.W.exc[k] * (this.r[il] + this.r[ir]);
+                        
+                        const iInhL = (i - k * this.wrapInh + this.M) % this.M;
+                        const iInhR = (i + k * this.wrapInh) % this.M;
+                        s += this.W.inh[k] * (this.r[iInhL] + this.r[iInhR]);
+                    }
+                    
+                    // Integrate with input
+                    out[i] = Math.max(0, 0.92 * this.r[i] + 0.08 * (s + gain * inputBump[i]));
+                }
                 
-                // STUCK DETECTION
-                this.lastAction = null;
-                this.actionRepeatCount = 0;
-                this.recentFlee = null; // Track last flee direction to prevent oscillation
+                this.r.set(out);
+            }
+            
+            getHeading() {
+                // Find bump peak
+                let maxIdx = 0;
+                let maxVal = this.r[0];
+                for (let i = 1; i < this.M; i++) {
+                    if (this.r[i] > maxVal) {
+                        maxVal = this.r[i];
+                        maxIdx = i;
+                    }
+                }
+                return maxIdx;
+            }
+            
+            getHeadingAngle() {
+                return (this.getHeading() / this.M) * 360;
+            }
+        }
+        
+        // Mushroom Body - Sparse coding + dopamine learning
+        class MushroomBody {
+            constructor(nKC = 2000, nMBON = 12) {
+                this.nKC = nKC;
+                this.nMBON = nMBON;
                 
-                // SCORING & PROGRESSION
+                // Kenyon cells (sparse activations)
+                this.KC = new Float32Array(nKC);
+                this.KCthresh = 0.5; // Sparsity threshold
+                
+                // Mushroom body output neurons
+                this.MBON = new Float32Array(nMBON);
+                
+                // KC→MBON weights (plastic)
+                this.Wkm = new Float32Array(nKC * nMBON);
+                
+                // Initialize small random weights
+                for (let i = 0; i < this.Wkm.length; i++) {
+                    this.Wkm[i] = (Math.random() - 0.5) * 0.1;
+                }
+                
+                // Learning rates
+                this.lrPos = 0.002;
+                this.lrNeg = 0.002;
+                this.decay = 0.9995;
+            }
+            
+            forward() {
+                // KC → MBON
+                this.MBON.fill(0);
+                for (let k = 0; k < this.nKC; k++) {
+                    if (this.KC[k] > this.KCthresh) {
+                        for (let m = 0; m < this.nMBON; m++) {
+                            this.MBON[m] += this.KC[k] * this.Wkm[k * this.nMBON + m];
+                        }
+                    }
+                }
+                
+                // Rectify MBON
+                for (let m = 0; m < this.nMBON; m++) {
+                    this.MBON[m] = Math.max(0, Math.min(1, this.MBON[m]));
+                }
+            }
+            
+            learn(dopamine) {
+                const lr = dopamine > 0 ? this.lrPos : this.lrNeg;
+                const sign = dopamine > 0 ? 1 : -1;
+                
+                // Hebbian/anti-Hebbian on active synapses
+                for (let k = 0; k < this.nKC; k++) {
+                    if (this.KC[k] > this.KCthresh) {
+                        for (let m = 0; m < this.nMBON; m++) {
+                            const idx = k * this.nMBON + m;
+                            this.Wkm[idx] += sign * lr * this.KC[k] * this.MBON[m] * Math.abs(dopamine);
+                            
+                            // Decay + clamp
+                            this.Wkm[idx] *= this.decay;
+                            this.Wkm[idx] = Math.max(-0.5, Math.min(0.5, this.Wkm[idx]));
+                        }
+                    }
+                }
+            }
+            
+            getValence() {
+                // MBON channels: 0-5 approach, 6-11 avoid
+                let approach = 0;
+                let avoid = 0;
+                for (let i = 0; i < 6; i++) approach += this.MBON[i];
+                for (let i = 6; i < 12; i++) avoid += this.MBON[i];
+                return { approach: approach / 6, avoid: avoid / 6 };
+            }
+        }
+        
+        // Antennal Lobe - Lateral inhibition for odor contrast
+        class AntennalLobe {
+            constructor(nGlom = 60) {
+                this.nGlom = nGlom;
+                this.r = new Float32Array(nGlom);
+                this.W = new Float32Array(nGlom).fill(1.0); // Odor→glom (diagonal)
+                this.gInh = 0.3; // Global inhibition strength
+            }
+            
+            step(odorIn) {
+                const mean = this.r.reduce((a, b) => a + b, 0) / this.nGlom;
+                
+                for (let i = 0; i < this.nGlom; i++) {
+                    const drive = this.W[i] * (odorIn[i] || 0);
+                    this.r[i] = Math.max(0, 0.9 * this.r[i] + 0.1 * (drive - this.gInh * mean));
+                }
+            }
+            
+            projectToKC(mb) {
+                // Random sparse PN→KC (10% active)
+                for (let k = 0; k < mb.nKC; k++) {
+                    let sum = 0;
+                    // Sample 6 random glomeruli per KC
+                    for (let s = 0; s < 6; s++) {
+                        const g = Math.floor(Math.random() * this.nGlom);
+                        sum += this.r[g];
+                    }
+                    mb.KC[k] = Math.tanh(sum / 6);
+                }
+            }
+        }
+        
+        // LAL Action Selection - Winner-take-all gating
+        class LALGate {
+            constructor() {
+                this.ch = new Float32Array(4); // UP, RIGHT, DOWN, LEFT
+            }
+            
+            step(cxHeading, mbValence, drives) {
+                // Convert heading to cardinal bias
+                const steer = this.headingToCardinal(cxHeading, 256);
+                
+                // Drive modulation
+                const foodBias = drives.hunger * mbValence.approach * 2.0;
+                const mateBias = drives.mating * 1.5;
+                const avoidBias = -mbValence.avoid * 3.0;
+                
+                // Update channels
+                for (let i = 0; i < 4; i++) {
+                    this.ch[i] = Math.max(0, 
+                        0.85 * this.ch[i] + 
+                        0.15 * (steer[i] + foodBias + mateBias + avoidBias)
+                    );
+                }
+                
+                // Winner-take-all
+                let maxIdx = 0;
+                let maxVal = this.ch[0];
+                for (let i = 1; i < 4; i++) {
+                    if (this.ch[i] > maxVal) {
+                        maxVal = this.ch[i];
+                        maxIdx = i;
+                    }
+                }
+                
+                return ['UP', 'RIGHT', 'DOWN', 'LEFT'][maxIdx];
+            }
+            
+            headingToCardinal(k, M) {
+                const angle = (k / M) * 2 * Math.PI;
+                const axes = [Math.PI / 2, 0, 3 * Math.PI / 2, Math.PI]; // UP, RIGHT, DOWN, LEFT
+                const out = new Float32Array(4);
+                
+                for (let i = 0; i < 4; i++) {
+                    const d = Math.abs(Math.atan2(Math.sin(angle - axes[i]), Math.cos(angle - axes[i])));
+                    out[i] = Math.max(0, 1 - d / (Math.PI / 2));
+                }
+                
+                return out;
+            }
+        }
+        
+        // ============================================================================
+        // FRUIT FLY AGENT
+        // ============================================================================
+        
+        class FruitFlyAgent {
+            constructor() {
+                this.active = true;
+                this.decisions = 0;
+                this.tick = 0;
+                this.currentStrategy = 'EXPLORE';
+                
+                // FIL manifold for dynamics
+                this.brain = new GPUFILManifold(100000);
+                
+                // Fly circuit modules
+                this.cx = new CXRing(256);
+                this.mb = new MushroomBody(2000, 12);
+                this.al = new AntennalLobe(60);
+                this.lal = new LALGate();
+                
+                // Sensory bands
+                this.BANDS = {
+                    DIR_START: 0,
+                    DIR_LEN: 2048,
+                    CHEM_START: 2560,
+                    CHEM_LEN: 512,
+                    INT_START: 3584
+                };
+                
+                // Learning state
+                this._prevR = 0;
+                this.dopamine = 0;
+                
+                // Spatial memory
+                this.dangerMap = new Map();
+                this.visitedTiles = new Map();
+                this.boundaryMemory = new Map();
+                this.boundaryLoopBreaker = 0;
+                this.recentWraps = [];
+                
+                // Scoring
                 this.score = 0;
                 this.highScore = parseInt(localStorage.getItem('mobius_high_score') || '0');
                 this.totalMates = 0;
@@ -457,21 +613,7 @@
                 this.totalDistance = 0;
                 this.achievementsUnlocked = new Set();
                 
-                console.log('100K FIL Brain initialized!', this.brain.useCPU ? 'CPU' : 'GPU');
-            }
-            
-            initWeights() {
-                // Efficient sparse weight representation
-                const phi = (1 + Math.sqrt(5)) / 2;
-                return {
-                    phi: phi,
-                    scale: 0.01
-                };
-            }
-            
-            // Compute weight on-the-fly using golden ratio function
-            getWeight(i, j, phi) {
-                return Math.sin(i * phi + j / phi) * 0.01;
+                console.log('🪰 Fruit Fly Brain initialized!', this.brain.useCPU ? 'CPU' : 'GPU');
             }
             
             toggle() {
@@ -479,23 +621,49 @@
                 return this.active;
             }
             
+            // Helper: Convert directional sensory band to bump for CX
+            dirBandToBump(sens) {
+                const bump = new Float32Array(256);
+                const {DIR_START, DIR_LEN} = this.BANDS;
+                
+                for (let i = 0; i < DIR_LEN; i++) {
+                    const a = Math.floor((i / DIR_LEN) * 256);
+                    bump[a] += Math.max(0, sens[DIR_START + i]);
+                }
+                
+                // Normalize
+                const sum = bump.reduce((x, y) => x + y, 0) || 1;
+                for (let i = 0; i < 256; i++) bump[i] /= sum;
+                
+                return bump;
+            }
+            
+            // Compute dopamine from reward delta
+            computeDopamine(reward) {
+                const delta = reward - this._prevR;
+                this._prevR = reward;
+                this.dopamine = Math.max(-1, Math.min(1, delta / 100));
+                return this.dopamine;
+            }
+            
+            // Spatial memory management
             updateSpatialMemory(game) {
-                // Decay old memories
+                // Decay old danger
                 for (const [key, mem] of this.dangerMap.entries()) {
                     mem.age++;
-                    mem.threat *= 0.95; // Decay threat over time
+                    mem.threat *= 0.95;
                     if (mem.threat < 0.1 || mem.age > 50) {
                         this.dangerMap.delete(key);
                     }
                 }
                 
-                // Record current predator positions
+                // Record predators
                 game.predators.forEach(pred => {
                     const key = `${pred.q},${pred.r}`;
-                    const threat = pred.speed === 0 ? 10.0 : (pred.speed * 5.0); // Stationary = high threat memory
+                    const threat = pred.speed === 0 ? 10.0 : (pred.speed * 5.0);
                     this.dangerMap.set(key, { threat, age: 0, type: pred.type });
                     
-                    // Also mark adjacent tiles for stationary predators (web spiders)
+                    // Mark web zones
                     if (pred.speed === 0) {
                         for (let dq = -2; dq <= 2; dq++) {
                             for (let dr = -2; dr <= 2; dr++) {
@@ -510,7 +678,7 @@
                     }
                 });
                 
-                // Track visited tiles
+                // Track visited
                 const currentKey = `${game.player.q},${game.player.r}`;
                 if (this.visitedTiles.has(currentKey)) {
                     const visit = this.visitedTiles.get(currentKey);
@@ -522,7 +690,6 @@
                 
                 // Limit memory size
                 if (this.visitedTiles.size > 200) {
-                    // Remove oldest visits
                     const sorted = Array.from(this.visitedTiles.entries())
                         .sort((a, b) => a[1].lastVisit - b[1].lastVisit);
                     for (let i = 0; i < 50; i++) {
@@ -531,16 +698,19 @@
                 }
             }
             
-            chooseSafeDirection(game, targetDq, targetDr) {
-                // Calculate preferred direction toward target
-                let preferredDir;
-                if (Math.abs(targetDq) > Math.abs(targetDr)) {
-                    preferredDir = targetDq > 0 ? 'RIGHT' : 'LEFT';
-                } else {
-                    preferredDir = targetDr > 0 ? 'DOWN' : 'UP';
+            cleanBoundaryMemory() {
+                for (const [key, tickStored] of this.boundaryMemory.entries()) {
+                    if (this.tick - tickStored > 30) {
+                        this.boundaryMemory.delete(key);
+                    }
                 }
+            }
+            
+            chooseSafeDirection(game, targetDq, targetDr) {
+                const preferredDir = Math.abs(targetDq) > Math.abs(targetDr) ?
+                    (targetDq > 0 ? 'RIGHT' : 'LEFT') :
+                    (targetDr > 0 ? 'DOWN' : 'UP');
                 
-                // Check if preferred direction is dangerous
                 const moves = {
                     'RIGHT': { q: 1, r: 0 },
                     'LEFT': { q: -1, r: 0 },
@@ -554,35 +724,36 @@
                     const newR = game.player.r + delta.r;
                     const key = `${newQ},${newR}`;
                     
-                    // Start with base score
                     let score = 1.0;
                     
-                    // Penalty for danger
                     if (this.dangerMap.has(key)) {
                         score -= this.dangerMap.get(key).threat;
                     }
                     
-                    // Bonus for moving toward target
                     if (dir === preferredDir) {
                         score += 2.0;
                     }
                     
-                    // Small penalty for repeatedly visited tiles
                     if (this.visitedTiles.has(key)) {
-                        const visit = this.visitedTiles.get(key);
-                        score -= visit.count * 0.1;
+                        score -= this.visitedTiles.get(key).count * 0.1;
                     }
                     
                     dirScores[dir] = score;
                 }
                 
-                // Pick highest scoring direction
                 const best = Object.entries(dirScores).reduce((a, b) => a[1] > b[1] ? a : b);
                 return best[0];
             }
             
             exploreWithMemory(game) {
-                // Explore toward least-visited areas, avoiding danger
+                this.cleanBoundaryMemory();
+                
+                if (this.boundaryLoopBreaker && this.boundaryLoopBreaker > 0) {
+                    this.boundaryLoopBreaker--;
+                    const lateralMoves = ['RIGHT', 'LEFT'];
+                    return lateralMoves[Math.floor(Math.random() * lateralMoves.length)];
+                }
+                
                 const moves = {
                     'RIGHT': { q: 1, r: 0 },
                     'LEFT': { q: -1, r: 0 },
@@ -596,56 +767,202 @@
                     const newR = game.player.r + delta.r;
                     const key = `${newQ},${newR}`;
                     
-                    // Start with exploration bonus
                     let score = 2.0;
                     
-                    // Penalty for danger
                     if (this.dangerMap.has(key)) {
-                        score -= this.dangerMap.get(key).threat * 1.5; // Stronger avoidance during exploration
+                        score -= this.dangerMap.get(key).threat * 1.5;
                     }
                     
-                    // Penalty for visited tiles
                     if (this.visitedTiles.has(key)) {
                         const visit = this.visitedTiles.get(key);
                         const recency = Math.max(0, 1.0 - (this.tick - visit.lastVisit) / 50);
                         score -= (visit.count * 0.5 + recency * 2.0);
                     } else {
-                        score += 3.0; // Big bonus for unvisited tiles
+                        score += 3.0;
                     }
                     
-                    // Avoid boundaries we've tested recently
                     if (this.boundaryMemory.has(key)) {
-                        score -= 1.0;
+                        const boundaryAge = this.tick - this.boundaryMemory.get(key);
+                        const penalty = Math.max(0, 5.0 - boundaryAge * 0.15);
+                        score -= penalty;
+                    }
+                    
+                    if (newQ <= -15 || newQ >= 15 || newR <= -10 || newR >= 10) {
+                        score -= 2.0;
                     }
                     
                     dirScores[dir] = score;
                 }
                 
-                // Pick highest scoring direction
-                const best = Object.entries(dirScores).reduce((a, b) => a[1] > b[1] ? a : b);
-                return best[0];
+                const sorted = Object.entries(dirScores).sort((a, b) => b[1] - a[1]);
+                
+                if (sorted.length >= 2 && Math.random() < 0.2) {
+                    return sorted[1][0];
+                }
+                
+                return sorted[0][0];
+            }
+            
+            // Main decision loop - Fruit Fly circuits!
+            decide(game) {
+                if (!this.active) return null;
+                this.decisions++;
+                this.tick++;
+                
+                this.updateSpatialMemory(game);
+                
+                if (this.tick % 50 === 0) {
+                    console.log(`BRAIN: CX=${this.cx.getHeadingAngle().toFixed(0)}°, DA=${this.dopamine.toFixed(2)}, Danger=${this.dangerMap.size}, Visited=${this.visitedTiles.size}`);
+                }
+                
+                // Encode sensory
+                const sensory = this.encodeSensory(game);
+                
+                // Check for urgent actions
+                if (game.brood) {
+                    this.currentStrategy = 'SELECT';
+                    console.log('SELECTING OFFSPRING!');
+                    return { type: 'SELECT_OFFSPRING', index: 0 };
+                }
+                
+                // Feed if standing on food
+                const onFood = game.foodSources.some(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
+                if (onFood) {
+                    this.currentStrategy = 'FEED';
+                    console.log('FEEDING!');
+                    return { type: 'FEED' };
+                }
+                
+                // Mate if next to partner
+                if (game.player.stage === 'ADULT' && !game.brood) {
+                    const nearMate = game.npcFlies.find(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
+                    if (nearMate) {
+                        this.currentStrategy = 'MATE';
+                        console.log('MATING!');
+                        return { type: 'MATE' };
+                    }
+                }
+                
+                // FRUIT FLY CIRCUIT PROCESSING
+                
+                // 1. Antennal Lobe - odor processing
+                const odor = sensory.slice(this.BANDS.CHEM_START, this.BANDS.CHEM_START + this.BANDS.CHEM_LEN);
+                this.al.step(odor);
+                
+                // 2. AL → MB (sparse KC coding)
+                this.al.projectToKC(this.mb);
+                
+                // 3. MB forward + learning
+                this.mb.forward();
+                const reward = this.computeReward(game);
+                const dopamine = this.computeDopamine(reward);
+                if (Math.abs(dopamine) > 0.01) {
+                    this.mb.learn(dopamine);
+                }
+                
+                // 4. CX ring attractor - heading from optic flow
+                const flowBump = this.dirBandToBump(sensory);
+                this.cx.step(flowBump, 1.0);
+                
+                // 5. LAL action selection
+                const mbValence = this.mb.getValence();
+                const drives = {
+                    hunger: Math.min(1.0, sensory[this.BANDS.INT_START + 8] / 12.0),
+                    mating: (game.player.stage === 'ADULT' && !game.brood) ? 1.0 : 0.0
+                };
+                
+                // Threat override - flee if in immediate danger
+                let maxThreat = 0;
+                let threatAngle = null;
+                for (let i = 0; i < this.BANDS.DIR_LEN; i++) {
+                    const v = sensory[this.BANDS.DIR_START + i];
+                    if (v > maxThreat) {
+                        maxThreat = v;
+                        threatAngle = (i / this.BANDS.DIR_LEN) * 2 * Math.PI - Math.PI;
+                    }
+                }
+                
+                const fleeThreshold = drives.mating > 0.5 || drives.hunger > 0.7 ? 6.0 : 4.0;
+                if (maxThreat > fleeThreshold && threatAngle !== null) {
+                    const escapeAngle = threatAngle + Math.PI;
+                    const normalizedAngle = ((escapeAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+                    const directionIndex = Math.round((normalizedAngle / (Math.PI / 2))) % 4;
+                    const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
+                    
+                    this.currentStrategy = 'FLEE_' + dirs[directionIndex];
+                    console.log(`FLEEING! Threat=${maxThreat.toFixed(2)}`);
+                    return { type: 'MOVE', direction: dirs[directionIndex] };
+                }
+                
+                // Active mate seeking
+                if (drives.mating > 0.5) {
+                    const nearest = game.npcFlies.reduce((closest, npc) => {
+                        const dist = Math.abs(npc.q - game.player.q) + Math.abs(npc.r - game.player.r);
+                        return dist < closest.dist ? { npc, dist } : closest;
+                    }, { dist: Infinity, npc: null });
+                    
+                    if (nearest.npc && nearest.dist < 15) {
+                        const dq = nearest.npc.q - game.player.q;
+                        const dr = nearest.npc.r - game.player.r;
+                        const dir = this.chooseSafeDirection(game, dq, dr);
+                        this.currentStrategy = 'SEEK_MATE';
+                        return { type: 'MOVE', direction: dir };
+                    }
+                }
+                
+                // Active food seeking
+                if (drives.hunger > 0.4 || game.player.energy < 40) {
+                    const foodTargets = game.foodSources.filter(f => {
+                        if (f.respawnTimer > 0) return false;
+                        if (f.type === 'DNA' && game.player.genome.slots[f.gene]) return false;
+                        return true;
+                    });
+                    
+                    if (foodTargets.length > 0) {
+                        const nearest = foodTargets.reduce((closest, food) => {
+                            const dist = Math.abs(food.q - game.player.q) + Math.abs(food.r - game.player.r);
+                            return dist < closest.dist ? { food, dist } : closest;
+                        }, { dist: Infinity, food: null });
+                        
+                        if (nearest.food && nearest.dist < 15) {
+                            const dq = nearest.food.q - game.player.q;
+                            const dr = nearest.food.r - game.player.r;
+                            const dir = this.chooseSafeDirection(game, dq, dr);
+                            this.currentStrategy = 'SEEK_FOOD';
+                            return { type: 'MOVE', direction: dir };
+                        }
+                    }
+                }
+                
+                // LAL gated exploration (integrates CX heading + MB valence)
+                const lalAction = this.lal.step(this.cx.getHeading(), mbValence, drives);
+                
+                // If LAL signal is weak, use memory-guided exploration
+                if (Math.max(...this.lal.ch) < 0.3) {
+                    const dir = this.exploreWithMemory(game);
+                    this.currentStrategy = 'EXPLORE_MEM';
+                    return { type: 'MOVE', direction: dir };
+                }
+                
+                this.currentStrategy = 'LAL_' + lalAction;
+                return { type: 'MOVE', direction: lalAction };
             }
             
             encodeSensory(game) {
                 const sensory = new Float32Array(4096);
-                
-                // PATCH 2: Use defined bands
                 const {DIR_START, DIR_LEN, CHEM_START, CHEM_LEN, INT_START} = this.BANDS;
-                const visualRes = DIR_LEN; // 2048
+                const visualRes = DIR_LEN;
                 
-                // THREATS - SUPER HIGH SALIENCE
+                // Threats
                 game.predators.forEach(pred => {
                     const dq = pred.q - game.player.q;
                     const dr = pred.r - game.player.r;
-                    const dist = Math.abs(dq) + Math.abs(dr); // Manhattan distance for hex grid
+                    const dist = Math.abs(dq) + Math.abs(dr);
                     const angle = Math.atan2(dr, dq);
-                    
-                    // MASSIVE threat signal - scales with proximity
                     const threat = Math.max(0, 12.0 * (1 - dist / 10));
                     
                     if (threat > 0.1) {
                         const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
-                        // Wide activation so it's hard to miss
                         for (let offset = -30; offset <= 30; offset++) {
                             const i = (DIR_START + ((idx + offset + visualRes) % visualRes));
                             sensory[i] = Math.max(sensory[i], threat * Math.exp(-offset * offset / 80));
@@ -653,7 +970,7 @@
                     }
                 });
                 
-                // Food - HIGH SALIENCE, especially when hungry
+                // Food
                 const hungerBoost = game.player.energy < 50 ? 2.0 : 1.0;
                 game.foodSources.forEach(food => {
                     if (food.type === 'DNA' && game.player.genome.slots[food.gene]) return;
@@ -663,7 +980,6 @@
                     const dr = food.r - game.player.r;
                     const dist = Math.sqrt(dq * dq + dr * dr);
                     const angle = Math.atan2(dr, dq);
-                    
                     const baseSalience = food.type === 'ENERGY' ? 6.0 : 4.0;
                     const foodSignal = Math.max(0, baseSalience * hungerBoost * (1 - dist / 20));
                     
@@ -674,7 +990,7 @@
                     }
                 });
                 
-                // CHEMOSENSORY LAYER (512 neurons - directional smell)
+                // Chemosensory (for AL)
                 for (let i = 0; i < CHEM_LEN; i++) {
                     const angle = (i / CHEM_LEN) * 2 * Math.PI;
                     const dx = Math.cos(angle);
@@ -690,7 +1006,7 @@
                         const dist = Math.sqrt(dq * dq + dr * dr);
                         const dot = (dq * dx + dr * dy) / (dist + 0.01);
                         
-                        if (dot > 0.7) { // In direction
+                        if (dot > 0.7) {
                             const smellStrength = food.type === 'ENERGY' ? 0.8 : 1.2;
                             smell += Math.max(0, smellStrength * (1.0 - dist / 30) * dot);
                         }
@@ -699,14 +1015,13 @@
                     sensory[CHEM_START + i] = smell * hungerBoost;
                 }
                 
-                // Mates - STRONG DRIVE for adults
+                // Mates
                 if (game.player.stage === 'ADULT' && !game.brood) {
                     game.npcFlies.forEach(npc => {
                         const dq = npc.q - game.player.q;
                         const dr = npc.r - game.player.r;
                         const dist = Math.sqrt(dq * dq + dr * dr);
                         const angle = Math.atan2(dr, dq);
-                        
                         const mateSignal = Math.max(0, 7.0 * (1 - dist / 18));
                         
                         const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * visualRes);
@@ -717,50 +1032,46 @@
                     });
                 }
                 
-                // Internal state - BOOSTED DRIVES (using INT_START band)
+                // Internal state
                 sensory[INT_START + 0] = game.player.stage === 'LARVA' ? 5.0 : 0.0;
                 sensory[INT_START + 1] = game.player.stage === 'PUPA' ? 5.0 : 0.0;
                 sensory[INT_START + 2] = game.player.stage === 'ADULT' ? 5.0 : 0.0;
                 sensory[INT_START + 3] = (game.player.age / game.player.maxAge) * 4.0;
                 sensory[INT_START + 4] = (game.player.energy / 100) * 3.0;
-                sensory[INT_START + 5] = game.brood ? 10.0 : 0.0; // URGENT: select offspring!
+                sensory[INT_START + 5] = game.brood ? 10.0 : 0.0;
                 
                 const onFood = game.foodSources.some(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
-                sensory[INT_START + 6] = onFood ? 8.0 : 0.0; // STRONG: eat now!
+                sensory[INT_START + 6] = onFood ? 8.0 : 0.0;
                 
                 const nearMate = game.npcFlies.some(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
-                sensory[INT_START + 7] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 9.0 : 0.0; // STRONG: mate now!
+                sensory[INT_START + 7] = (nearMate && game.player.stage === 'ADULT' && !game.brood) ? 9.0 : 0.0;
                 
-                // Energy urgency - CRITICAL when low
                 if (game.player.energy < 40) {
-                    sensory[INT_START + 8] = 12.0; // STARVING!
+                    sensory[INT_START + 8] = 12.0;
                 } else if (game.player.energy < 60) {
-                    sensory[INT_START + 8] = 6.0; // Hungry
+                    sensory[INT_START + 8] = 6.0;
                 } else {
                     sensory[INT_START + 8] = 0.0;
                 }
                 
-                // Mating urge for adults without brood - VERY STRONG
                 if (game.player.stage === 'ADULT' && !game.brood) {
-                    sensory[INT_START + 9] = 12.0; // VERY STRONG breeding drive
+                    sensory[INT_START + 9] = 12.0;
                 }
                 
-                // MEMORY-BASED DANGER (spatial working memory)
-                // Sample danger map in 8 cardinal/ordinal directions
+                // Memory-based danger
                 const dangerDirs = [
-                    { angle: 0, dq: 1, dr: 0 },           // E
-                    { angle: Math.PI/4, dq: 1, dr: -1 },  // NE
-                    { angle: Math.PI/2, dq: 0, dr: -1 },  // N
-                    { angle: 3*Math.PI/4, dq: -1, dr: -1 },// NW
-                    { angle: Math.PI, dq: -1, dr: 0 },    // W
-                    { angle: 5*Math.PI/4, dq: -1, dr: 1 },// SW
-                    { angle: 3*Math.PI/2, dq: 0, dr: 1 }, // S
-                    { angle: 7*Math.PI/4, dq: 1, dr: 1 }  // SE
+                    { angle: 0, dq: 1, dr: 0 },
+                    { angle: Math.PI/4, dq: 1, dr: -1 },
+                    { angle: Math.PI/2, dq: 0, dr: -1 },
+                    { angle: 3*Math.PI/4, dq: -1, dr: -1 },
+                    { angle: Math.PI, dq: -1, dr: 0 },
+                    { angle: 5*Math.PI/4, dq: -1, dr: 1 },
+                    { angle: 3*Math.PI/2, dq: 0, dr: 1 },
+                    { angle: 7*Math.PI/4, dq: 1, dr: 1 }
                 ];
                 
-                dangerDirs.forEach((dir, i) => {
+                dangerDirs.forEach(dir => {
                     let memDanger = 0;
-                    // Check 3 tiles in this direction
                     for (let dist = 1; dist <= 3; dist++) {
                         const checkQ = game.player.q + dir.dq * dist;
                         const checkR = game.player.r + dir.dr * dist;
@@ -768,11 +1079,10 @@
                         
                         if (this.dangerMap.has(key)) {
                             const danger = this.dangerMap.get(key);
-                            memDanger += danger.threat / dist; // Closer = stronger signal
+                            memDanger += danger.threat / dist;
                         }
                     }
                     
-                    // Inject remembered danger into directional layer
                     if (memDanger > 0.1) {
                         const idx = Math.floor(((dir.angle + Math.PI) / (2 * Math.PI)) * visualRes);
                         for (let offset = -10; offset <= 10; offset++) {
@@ -785,285 +1095,32 @@
                 return sensory;
             }
             
-            forward(sensory, game) {
-                // MASSIVE GPU COMPUTATION
-                
-                // Layer 1: 4096 → 24576 (sparse sampling)
-                const h1 = new Float32Array(24576);
-                for (let i = 0; i < 4096; i++) {
-                    if (sensory[i] > 0.01) {
-                        // Sample 64 connections per input neuron instead of all 24576
-                        for (let k = 0; k < 64; k++) {
-                            const j = (i * 97 + k * 379) % 24576; // Pseudo-random but deterministic
-                            h1[j] += sensory[i] * this.getWeight(i, j, this.weights.phi);
-                        }
-                    }
-                }
-                
-                // Inject into manifold + evolve (GPU work!)
-                for (let i = 0; i < 24576; i++) {
-                    this.brain.state[(4096 + i) * 4] = Math.tanh(h1[i]);
-                }
-                this.brain.evolve();
-                this.brain.evolve();
-                this.brain.evolve(); // Triple evolve for more GPU work
-                
-                // Layer 2: 24576 → 24576 (highly sparse)
-                const h2 = new Float32Array(24576);
-                for (let i = 0; i < 24576; i++) {
-                    const val = this.brain.state[(4096 + i) * 4];
-                    if (Math.abs(val) > 0.01) {
-                        // Only 32 connections per neuron
-                        for (let k = 0; k < 32; k++) {
-                            const j = (i * 73 + k * 211) % 24576;
-                            h2[j] += val * this.getWeight(i, j, this.weights.phi);
-                        }
-                    }
-                }
-                
-                for (let i = 0; i < 24576; i++) {
-                    this.brain.state[(28672 + i) * 4] = Math.tanh(h2[i]);
-                }
-                this.brain.evolve();
-                this.brain.evolve();
-                
-                // PATCH 1: Sync GPU → CPU after evolves
-                this.brain.downloadState();   // ensure reads reflect GPU evolution
-                
-                // Motor output from brain state
-                const motor = new Float32Array(22176);
-                
-                // Read movement preferences from brain
-                for (let i = 0; i < 8192; i++) {
-                    motor[i] = this.brain.state[(77824 + i) * 4];
-                }
-                
-                // PATCH 2: Use band constants for direct responses
-                const ON_FOOD = sensory[this.BANDS.INT_START + 6] > 5.0;
-                const NEAR_MATE = sensory[this.BANDS.INT_START + 7] > 5.0;
-                const STARVING = sensory[this.BANDS.INT_START + 8] > 8.0;
-                const BREED_DRIVE = sensory[this.BANDS.INT_START + 9];
-                
-                // DIRECT BEHAVIORAL RESPONSES FROM SENSORY STATE
-                motor[20000] = ON_FOOD ? 20.0 : 0.0; // VERY HIGH
-                motor[20500] = NEAR_MATE ? 25.0 : BREED_DRIVE * 2.5; // VERY HIGH when near, strong drive otherwise
-                motor[21000] = sensory[this.BANDS.INT_START + 5]; // Offspring selection (10.0 when brood exists)
-                
-                // Hunger modulation - boost food-seeking in motor layer
-                if (STARVING) {
-                    // Boost motor responses toward food signals
-                    for (let i = 0; i < this.BANDS.DIR_LEN; i++) {
-                        const s = sensory[this.BANDS.DIR_START + i];
-                        if (s > 2.0) { // Food signal
-                            const motorIdx = (i * 4) % 8192;
-                            motor[motorIdx] += s * 3.0; // STRONG boost
-                        }
-                    }
-                }
-                
-                return motor;
-            }
-            
-            decide(game) {
-                if (!this.active) return null;
-                this.decisions++;
-                this.tick++;
-                
-                // UPDATE WORKING MEMORY
-                this.updateSpatialMemory(game);
-                this.cleanBoundaryMemory();
-                
-                // Memory diagnostics (occasional)
-                if (this.tick % 50 === 0) {
-                    console.log(`MEMORY: ${this.dangerMap.size} danger zones, ${this.visitedTiles.size} visited, ${this.boundaryMemory.size} boundaries`);
-                }
-                
-                const sensory = this.encodeSensory(game);
-                
-                // PATCH 2: Calculate max threat using DIR band
-                let maxThreat = 0;
-                let threatAngle = null;
-                for (let i = 0; i < this.BANDS.DIR_LEN; i++) {
-                    const v = sensory[this.BANDS.DIR_START + i];
-                    if (v > maxThreat) {
-                        maxThreat = v;
-                        threatAngle = (i / this.BANDS.DIR_LEN) * 2 * Math.PI - Math.PI;
-                    }
-                }
-                
-                // Check if we're on important business
-                const onMission = (game.player.stage === 'ADULT' && !game.brood) || sensory[this.BANDS.INT_START + 8] > 8.0;
-                const fleeThreshold = onMission ? 7.0 : 5.0; // Raised thresholds to reduce flee spam
-                
-                // ANTI-OSCILLATION: Don't flee if we just fled in the opposite direction
-                if (maxThreat > fleeThreshold && threatAngle !== null) {
-                    const escapeAngle = threatAngle + Math.PI;
-                    const normalizedAngle = ((escapeAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-                    const directionIndex = Math.round((normalizedAngle / (Math.PI / 2))) % 4;
-                    const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
-                    const escapeDir = dirs[directionIndex];
-                    
-                    // Check if this is opposite of recent flee
-                    const opposites = { 'RIGHT': 'LEFT', 'LEFT': 'RIGHT', 'UP': 'DOWN', 'DOWN': 'UP' };
-                    if (this.recentFlee && this.recentFlee.dir === opposites[escapeDir] && 
-                        this.tick - this.recentFlee.tick < 3) {
-                        // Skip this flee - we're oscillating
-                        console.log(`Skipping flee oscillation: ${escapeDir} vs recent ${this.recentFlee.dir}`);
-                    } else {
-                        this.currentStrategy = 'FLEE_' + escapeDir;
-                        this.recentFlee = { dir: escapeDir, tick: this.tick };
-                        console.log(`FLEEING! Threat=${maxThreat.toFixed(2)}, Angle=${(threatAngle*180/Math.PI).toFixed(0)}°, Escape=${escapeDir}`);
-                        return { type: 'MOVE', direction: escapeDir };
-                    }
-                }
-                
-                const motor = this.forward(sensory, game);
-                
-                // Check for undefined refs
-                if (!game.foodSources || !game.player) return null;
-                
-                // Decode behaviors - REORDERED PRIORITIES
-                
-                // 1. Select offspring (highest priority when available)
-                if (motor[21000] > 8.0 && game.brood) {
-                    this.currentStrategy = 'SELECT';
-                    console.log('SELECTING OFFSPRING!');
-                    return { type: 'SELECT_OFFSPRING', index: 0 };
-                }
-                
-                // 2. Feed if STANDING ON FOOD - immediate action
-                if (motor[20000] > 12.0) {
-                    const food = game.foodSources.find(f => f.q === game.player.q && f.r === game.player.r && f.respawnTimer === 0);
-                    if (food) {
-                        this.currentStrategy = 'FEED';
-                        console.log('FEEDING!');
-                        return { type: 'FEED' };
-                    }
-                }
-                
-                // 3. Mate if NEXT TO PARTNER - immediate action
-                if (motor[20500] > 20.0 && game.player.stage === 'ADULT' && !game.brood) {
-                    const near = game.npcFlies.find(n => Math.abs(n.q - game.player.q) + Math.abs(n.r - game.player.r) <= 2);
-                    if (near) {
-                        this.currentStrategy = 'MATE';
-                        console.log('MATING!');
-                        return { type: 'MATE' };
-                    }
-                }
-                
-                // 4. ACTIVE MATE-SEEKING - HIGH PRIORITY for adults (before food seeking!)
-                if (game.player.stage === 'ADULT' && !game.brood && motor[20500] > 15.0) {
-                    const nearest = game.npcFlies.reduce((closest, npc) => {
-                        const dist = Math.abs(npc.q - game.player.q) + Math.abs(npc.r - game.player.r);
-                        return dist < closest.dist ? { npc, dist } : closest;
-                    }, { dist: Infinity, npc: null });
-                    
-                    if (nearest.npc && nearest.dist < 15) { // Increased from 10 to 15
-                        const dq = nearest.npc.q - game.player.q;
-                        const dr = nearest.npc.r - game.player.r;
-                        let dir = this.chooseSafeDirection(game, dq, dr);
-                        this.currentStrategy = 'SEEK_MATE';
-                        
-                        // Log if we're detouring due to memory
-                        const straightDir = Math.abs(dq) > Math.abs(dr) ? (dq > 0 ? 'RIGHT' : 'LEFT') : (dr > 0 ? 'DOWN' : 'UP');
-                        if (dir !== straightDir) {
-                            console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist} [avoiding danger: ${straightDir}→${dir}]`);
-                        } else {
-                            console.log(`Seeking mate at (${nearest.npc.q},${nearest.npc.r}), dist=${nearest.dist}`);
-                        }
-                        return { type: 'MOVE', direction: dir };
-                    }
-                }
-                
-                // 5. ACTIVE FOOD-SEEKING - when hungry
-                if (sensory[this.BANDS.INT_START + 8] > 5.0 || game.player.energy < 40) {
-                    const foodTargets = game.foodSources.filter(f => {
-                        if (f.respawnTimer > 0) return false;
-                        if (f.type === 'DNA' && game.player.genome.slots[f.gene]) return false;
-                        return true;
-                    });
-                    
-                    if (foodTargets.length > 0) {
-                        const nearest = foodTargets.reduce((closest, food) => {
-                            const dist = Math.abs(food.q - game.player.q) + Math.abs(food.r - game.player.r);
-                            return dist < closest.dist ? { food, dist } : closest;
-                        }, { dist: Infinity, food: null });
-                        
-                        if (nearest.food && nearest.dist < 15) { // Increased from 12 to 15
-                            const dq = nearest.food.q - game.player.q;
-                            const dr = nearest.food.r - game.player.r;
-                            let dir = this.chooseSafeDirection(game, dq, dr);
-                            this.currentStrategy = 'SEEK_FOOD';
-                            
-                            // Log if we're detouring due to memory
-                            const straightDir = Math.abs(dq) > Math.abs(dr) ? (dq > 0 ? 'RIGHT' : 'LEFT') : (dr > 0 ? 'DOWN' : 'UP');
-                            if (dir !== straightDir) {
-                                console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist} [avoiding danger: ${straightDir}→${dir}]`);
-                            } else {
-                                console.log(`Seeking ${nearest.food.type} at (${nearest.food.q},${nearest.food.r}), dist=${nearest.dist}`);
-                            }
-                            return { type: 'MOVE', direction: dir };
-                        }
-                    }
-                }
-                
-                // 6. Movement: find peak in first 8192 motor neurons
-                let maxIdx = 0;
-                let maxVal = motor[0];
-                for (let i = 1; i < 8192; i++) {
-                    if (motor[i] > maxVal) {
-                        maxVal = motor[i];
-                        maxIdx = i;
-                    }
-                }
-                
-                // EXPLORATION: If motor signal is weak, use memory-guided exploration
-                if (maxVal < 0.5) {
-                    const dir = this.exploreWithMemory(game);
-                    this.currentStrategy = 'EXPLORE_MEM';
-                    console.log('EXPLORING (memory-guided):', dir);
-                    return { type: 'MOVE', direction: dir };
-                }
-                
-                // Convert to cardinal direction
-                const angle = (maxIdx / 8192) * 2 * Math.PI;
-                const directionIndex = Math.round((angle / (Math.PI / 2))) % 4;
-                const dirs = ['RIGHT', 'DOWN', 'LEFT', 'UP'];
-                
-                this.currentStrategy = 'MOVE_' + dirs[directionIndex];
-                return { type: 'MOVE', direction: dirs[directionIndex] };
-            }
-            
-            reward(game) {
+            computeReward(game) {
                 let r = 0;
-                r += game.player.energy * 2; // Energy critical
+                r += game.player.energy * 2;
                 r += Object.keys(game.player.genome.slots).filter(k => game.player.genome.slots[k]).length * 30;
                 r += game.player.stage === 'ADULT' ? 60 : 0;
                 
-                // PATCH 4: Safety guard for empty predators array
                 const dists = game.predators.map(p => Math.abs(p.q - game.player.q) + Math.abs(p.r - game.player.r));
                 const minPredDist = dists.length ? Math.min(...dists) : 99;
                 r += minPredDist > 4 ? 40 : (minPredDist < 2 ? -100 : -20);
                 
-                this.currentFitness = r;
-                if (r > this.bestFitness) this.bestFitness = r;
+                return r;
             }
             
-            // SCORING SYSTEM
+            // Scoring & achievements
             addScore(points, reason) {
                 this.score += points;
                 if (this.score > this.highScore) {
                     this.highScore = this.score;
                     localStorage.setItem('mobius_high_score', this.highScore.toString());
                 }
-                console.log(`+${points} pts: ${reason} (Total: ${this.score})`);
                 this.checkAchievements();
             }
             
             onMating() {
                 this.totalMates++;
                 this.addScore(500, 'MATING SUCCESS');
-                this.checkAchievements();
             }
             
             onFeeding(type) {
@@ -1080,25 +1137,37 @@
                 this.generationsReached = Math.max(this.generationsReached, gen);
                 this.addScore(gen * 100, `GEN ${gen} REACHED`);
                 
-                // Clear spatial memory on generation change
+                // Clear spatial memory
                 this.dangerMap.clear();
                 this.visitedTiles.clear();
                 this.boundaryMemory.clear();
-                console.log('Memory cleared for new generation');
+                this.boundaryLoopBreaker = 0;
+                this.recentWraps = [];
             }
             
             onBoundaryWrap(q, r) {
-                // Remember we hit a boundary here
                 const key = `${q},${r}`;
-                this.boundaryMemory.set(key, this.tick); // Store tick, not boolean
-            }
-            
-            cleanBoundaryMemory() {
-                // Remove boundaries older than 30 ticks
-                for (const [key, tickStored] of this.boundaryMemory.entries()) {
-                    if (this.tick - tickStored > 30) {
-                        this.boundaryMemory.delete(key);
-                    }
+                this.boundaryMemory.set(key, this.tick);
+                
+                let destQ = q;
+                let destR = r;
+                
+                if (q < -15) destQ = 15;
+                else if (q > 15) destQ = -15;
+                
+                if (r < -10) destR = 10;
+                else if (r > 10) destR = -10;
+                
+                const destKey = `${destQ},${destR}`;
+                this.boundaryMemory.set(destKey, this.tick);
+                
+                if (!this.recentWraps) this.recentWraps = [];
+                this.recentWraps.push(this.tick);
+                if (this.recentWraps.length > 5) this.recentWraps.shift();
+                
+                if (this.recentWraps.length === 5 && (this.tick - this.recentWraps[0]) < 10) {
+                    console.log('BOUNDARY LOOP DETECTED!');
+                    this.boundaryLoopBreaker = 10;
                 }
             }
             
@@ -1134,7 +1203,6 @@
                         this.achievementsUnlocked.add(ach.id);
                         console.log(`🏆 ACHIEVEMENT: ${ach.msg}`);
                         this.addScore(250, 'ACHIEVEMENT');
-                        // Store reference to game scene for notification
                         if (window.gameScene) {
                             window.gameScene.showAchievementNotification(ach.msg);
                         }
@@ -1144,110 +1212,26 @@
         }
         
         // ============================================================================
-        // EoP SYSTEM - Risk/Reward for Pickups
-        // ============================================================================
-        
-        class EoPSystem {
-            calculateCF(fly, tile, posture = 'DEFAULT') {
-                let cf = tile.cf_base || 0;
-                if (fly.inHeat) cf += 1;
-                if (posture === 'GREEDY_SURGE') cf += 1;
-                if (posture === 'SAFE_BUFFER') cf -= 1;
-                return Math.max(0, cf);
-            }
-            
-            roll(fly, item, cf, posture = 'DEFAULT') {
-                const instability = fly.genome.instability || 0;
-                let p_SI = 0.40, p_CS = 0.05; // Success vs Critical failure
-                
-                if (fly.stage === 'LARVA') p_SI += 0.10; // Larvae safer
-                if (instability > 8) p_CS += 0.05; // High instability riskier
-                if (cf > 2) p_CS += 0.05; // High CF riskier
-                
-                const roll = Math.random();
-                
-                if (roll < p_SI) {
-                    return { outcome: 'SI', instability: -1, score: 200 }; // Success!
-                }
-                if (roll > 0.95) {
-                    return { outcome: 'CS', instability: 2, stun: 2, score: -50 }; // Critical failure
-                }
-                return { outcome: 'MF', instability: 0, score: 50 }; // Mixed/neutral
-            }
-        }
-        
-        // ============================================================================
-        // PLATEAU MUSEUM - Track Stable Genome Discoveries
-        // ============================================================================
-        
-        class PlateauMuseum {
-            constructor() {
-                this.plateaus = [];
-                this.nextPlateauId = 1;
-            }
-            
-            checkAndSave(genome, stability, generation) {
-                if (stability < 60) return null;
-                
-                const genomeSignature = Object.keys(genome.slots)
-                    .filter(k => genome.slots[k])
-                    .sort()
-                    .join('|');
-                
-                const isNovel = !this.plateaus.some(p => p.signature === genomeSignature);
-                if (!isNovel) return null;
-                
-                const totalGenes = Object.keys(genome.slots).filter(k => genome.slots[k]).length;
-                if (totalGenes <= 4) return null; // Must have evolved beyond basics
-                
-                const plateau = {
-                    id: this.nextPlateauId++,
-                    signature: genomeSignature,
-                    stability: stability,
-                    generation: generation,
-                    geneCount: totalGenes,
-                    name: `Evolved-${totalGenes}G`,
-                    timestamp: Date.now()
-                };
-                
-                this.plateaus.push(plateau);
-                return plateau;
-            }
-        }
-        
-        // ============================================================================
-        // EXPANDED LOCI - 15 Genes
+        // GAME SCENE
         // ============================================================================
         
         const LOCI = {
-            // Core developmental genes
             Notch: { class: 'Core', effects: { viability: 15 }, instability: 0 },
             Egfr: { class: 'Core', effects: { viability: 12 }, instability: 0 },
             hh: { class: 'Core', effects: { viability: 10 }, instability: 1 },
             wg: { class: 'Core', effects: { viability: 10 }, instability: 1 },
-            
-            // Sensorimotor genes
             vg: { class: 'Sensorimotor', effects: { flight: 8 }, instability: 1 },
-            sd: { class: 'Sensorimotor', effects: { flight: 6 }, instability: 1 },
-            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 },
-            Or22a: { class: 'Sensorimotor', effects: { olfaction: 8 }, instability: 1 },
-            
-            // Metabolic/stress genes
             Hsp70: { class: 'Metabolic', effects: { heat_tol: 12 }, instability: 1 },
-            Hsp83: { class: 'Metabolic', effects: { heat_tol: 8 }, instability: 0 },
             InR: { class: 'Metabolic', effects: { energy: 8 }, instability: 2 },
-            Drip: { class: 'Metabolic', effects: { desiccation: 10 }, instability: 1 },
+            Orco: { class: 'Sensorimotor', effects: { olfaction: 10 }, instability: 1 },
             Adh: { class: 'Metabolic', effects: { ferment_tol: 10 }, instability: 1 },
-            Sod: { class: 'Metabolic', effects: { oxidative: 6 }, instability: 1 },
-            
-            // Topology sense
-            Seamwise_gamma: { class: 'Topology', effects: { parity_sense: 12 }, instability: 2 }
+            Drip: { class: 'Metabolic', effects: { desiccation: 10 }, instability: 1 },
         };
         
         class HexGrid {
             constructor(hexSize) {
                 this.hexSize = hexSize;
-                this.seamLine = 0; // Seam at equator (r=0)
+                this.seamLine = 0;
             }
             
             hexToPixel(q, r) {
@@ -1257,7 +1241,6 @@
             }
             
             crossesSeam(r_from, r_to) {
-                // Crossing r=0 flips parity (Möbius twist)
                 return (r_from < this.seamLine && r_to >= this.seamLine) ||
                        (r_from >= this.seamLine && r_to < this.seamLine);
             }
@@ -1279,16 +1262,40 @@
             }
         }
         
-        // ============================================================================
-        // GAME SCENE WITH ENERGY SYSTEM
-        // ============================================================================
+        class EoPSystem {
+            calculateCF(fly, tile, posture = 'DEFAULT') {
+                let cf = tile.cf_base || 0;
+                if (fly.inHeat) cf += 1;
+                if (posture === 'GREEDY_SURGE') cf += 1;
+                if (posture === 'SAFE_BUFFER') cf -= 1;
+                return Math.max(0, cf);
+            }
+            
+            roll(fly, item, cf, posture = 'DEFAULT') {
+                const instability = fly.genome.instability || 0;
+                let p_SI = 0.40, p_CS = 0.05;
+                
+                if (fly.stage === 'LARVA') p_SI += 0.10;
+                if (instability > 8) p_CS += 0.05;
+                if (cf > 2) p_CS += 0.05;
+                
+                const roll = Math.random();
+                
+                if (roll < p_SI) {
+                    return { outcome: 'SI', instability: -1, score: 200 };
+                }
+                if (roll > 0.95) {
+                    return { outcome: 'CS', instability: 2, stun: 2, score: -50 };
+                }
+                return { outcome: 'MF', instability: 0, score: 50 };
+            }
+        }
         
         class GameScene extends Phaser.Scene {
             constructor() {
                 super({ key: 'GameScene' });
-                this.agent = new MassiveFILAgent();
-                this.eopSystem = new EoPSystem(); // EoP for risk/reward pickups
-                this.museum = new PlateauMuseum(); // Track stable genomes
+                this.agent = new FruitFlyAgent();
+                this.eopSystem = new EoPSystem();
             }
             
             create() {
@@ -1301,10 +1308,8 @@
                 this.npcFlies = [];
                 this.generation = 1;
                 
-                // Make this globally accessible for achievement notifications
                 window.gameScene = this;
-                
-                this.seamCrossings = 0; // Track topology interactions
+                this.seamCrossings = 0;
                 
                 this.generateWorld();
                 
@@ -1324,10 +1329,10 @@
                     },
                     inventory: [], 
                     alive: true,
-                    parityFlipped: false, // Möbius topology
-                    posture: 'DEFAULT', // For EoP system
-                    inHeat: false, // For CF calculation
-                    stunned: 0 // Stun counter
+                    parityFlipped: false,
+                    posture: 'DEFAULT',
+                    inHeat: false,
+                    stunned: 0
                 };
                 
                 this.playerSprite = this.add.circle(0, 0, 10, 0xFF6B6B).setDepth(100);
@@ -1339,14 +1344,9 @@
                 this.setupInput();
                 this.updateAllUI();
                 
-                // PATCH 3: Update UI to reflect auto-on AI
-                document.getElementById('ai-status').innerHTML = 'Status: <span class="gpu">THINKING</span>';
-                
                 this.brood = null;
-                this.eventLog = [];
                 
-                this.log('100K GPU FIL Brain - ONLINE!', '#00ff00');
-                this.log('AI AUTO-ENABLED! Press A to toggle', '#ff00ff');
+                console.log('🪰 Fruit Fly Brain - ONLINE!');
                 
                 // AI tick
                 this.time.addEvent({
@@ -1359,7 +1359,7 @@
                     loop: true
                 });
                 
-                // Energy drain - slower now (every 2 seconds)
+                // Energy drain
                 this.time.addEvent({
                     delay: 2000,
                     callback: () => {
@@ -1392,17 +1392,14 @@
                     }
                 }
                 
-                // FOOD: Mix of DNA and ENERGY - MORE FOOD with CF values!
+                // Food
                 const foodDefs = [
-                    // DNA food (brown/orange) with CF risk
                     { q: 3, r: 2, type: 'DNA', gene: 'vg', color: 0x8B4513, cf_base: 0 },
                     { q: -4, r: 3, type: 'DNA', gene: 'Hsp70', color: 0xFFA500, cf_base: 1 },
                     { q: 5, r: -2, type: 'DNA', gene: 'InR', color: 0xD2B48C, cf_base: 0 },
                     { q: -2, r: -4, type: 'DNA', gene: 'Orco', color: 0xFFFF99, cf_base: 1 },
                     { q: 8, r: 3, type: 'DNA', gene: 'Adh', color: 0xCD853F, cf_base: 0 },
                     { q: -7, r: -2, type: 'DNA', gene: 'Drip', color: 0xDEB887, cf_base: 1 },
-                    
-                    // ENERGY food (green circles) - pure sustenance
                     { q: 7, r: 1, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
                     { q: -6, r: -1, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
                     { q: 2, r: 5, type: 'ENERGY', color: 0x00ff00, cf_base: 0 },
@@ -1419,14 +1416,10 @@
                 
                 foodDefs.forEach(f => this.foodSources.push({ ...f, respawnTimer: 0 }));
                 
-                // NPCs - MORE FLIES!
+                // NPCs
                 [
-                    { q: 4, r: 4 }, 
-                    { q: -5, r: 3 }, 
-                    { q: 6, r: -3 },
-                    { q: -7, r: 5 },
-                    { q: 9, r: -2 },
-                    { q: 3, r: -5 }
+                    { q: 4, r: 4 }, { q: -5, r: 3 }, { q: 6, r: -3 },
+                    { q: -7, r: 5 }, { q: 9, r: -2 }, { q: 3, r: -5 }
                 ].forEach(pos => {
                     this.npcFlies.push({
                         q: pos.q, r: pos.r, stage: 'ADULT',
@@ -1434,7 +1427,7 @@
                     });
                 });
                 
-                // Predators - MULTIPLE TYPES!
+                // Predators
                 [
                     { q: -8, r: -3, type: 'JUMPING_SPIDER', color: 0xff0000, speed: 1, vision: 3, behavior: 'chase' },
                     { q: 10, r: 5, type: 'DRAGONFLY', color: 0xff6600, speed: 2, vision: 4, behavior: 'patrol' },
@@ -1464,13 +1457,11 @@
                     if (food.respawnTimer > 0) return;
                     const pos = this.hexGrid.hexToPixel(food.q, food.r);
                     if (food.type === 'DNA') {
-                        // Diamond for DNA
                         this.foodGraphics.fillStyle(food.color, 0.9);
                         this.foodGraphics.fillRect(pos.x - 8, pos.y - 8, 16, 16);
                         this.foodGraphics.lineStyle(2, 0xffffff, 0.8);
                         this.foodGraphics.strokeRect(pos.x - 8, pos.y - 8, 16, 16);
                     } else {
-                        // Circle for energy
                         this.foodGraphics.fillStyle(food.color, 0.8);
                         this.foodGraphics.fillCircle(pos.x, pos.y, 10);
                         this.foodGraphics.lineStyle(2, 0xffffff, 0.6);
@@ -1503,9 +1494,8 @@
             toggleAI() {
                 const active = this.agent.toggle();
                 document.getElementById('ai-status').innerHTML = active ? 
-                    'Status: <span class="gpu">THINKING</span>' : 
-                    'Status: <span class="ai">OFF</span>';
-                this.log(active ? '100K GPU BRAIN ACTIVE!' : 'Neural Net OFF', '#ff00ff');
+                    'Status: <span class="brain">THINKING</span>' : 
+                    'Status: <span class="brain">OFF</span>';
             }
             
             update() {
@@ -1534,7 +1524,6 @@
                 if (direction === 'LEFT') newQ -= 1;
                 if (direction === 'RIGHT') newQ += 1;
                 
-                // Wrap HORIZONTALLY (q: -15 to 15)
                 if (newQ < -15) {
                     newQ = 15;
                     this.agent.onBoundaryWrap(this.player.q, this.player.r);
@@ -1544,26 +1533,21 @@
                     this.agent.onBoundaryWrap(this.player.q, this.player.r);
                 }
                 
-                // Wrap VERTICALLY with parity flip (Möbius twist)
                 if (newR < -10) {
                     newR = 10;
                     this.player.parityFlipped = !this.player.parityFlipped;
-                    this.log('Möbius wrap: top→bottom', '#00ffff');
                     this.agent.addScore(25, 'TOPOLOGY');
                     this.agent.onBoundaryWrap(this.player.q, this.player.r);
                 } else if (newR > 10) {
                     newR = -10;
                     this.player.parityFlipped = !this.player.parityFlipped;
-                    this.log('Möbius wrap: bottom→top', '#00ffff');
                     this.agent.addScore(25, 'TOPOLOGY');
                     this.agent.onBoundaryWrap(this.player.q, this.player.r);
                 }
                 
-                // SEAM CROSSING at r=0
                 if (this.hexGrid.crossesSeam(this.player.r, newR)) {
                     this.player.parityFlipped = !this.player.parityFlipped;
                     this.seamCrossings++;
-                    this.log('Seam crossed!', '#00ffff');
                     this.agent.addScore(10, 'TOPOLOGY');
                 }
                 
@@ -1572,45 +1556,17 @@
                 this.player.turn++;
                 this.player.age++;
                 
-                // Track movement
                 this.agent.onMovement(1);
                 
-                // Survival bonus every 10 turns
                 if (this.player.age % 10 === 0) {
                     this.agent.onSurvival(this.player.age, this.player.stage);
                 }
-                
-                // Check for plateau discovery
-                this.checkPlateaus();
                 
                 this.checkLifecycleAdvancement();
                 this.checkPredators();
                 this.updatePlayerSprite();
                 this.updateAllUI();
                 this.drawWorld();
-            }
-            
-            checkPlateaus() {
-                // Calculate current stability
-                let stability = 0;
-                ['Notch', 'Egfr', 'hh', 'wg'].forEach(gene => {
-                    if (this.player.genome.slots[gene]) {
-                        stability += LOCI[gene].effects.viability || 0;
-                    }
-                });
-                stability = stability + 50 - this.player.genome.instability * 5;
-                
-                const plateau = this.museum.checkAndSave(
-                    this.player.genome, 
-                    stability, 
-                    this.generation
-                );
-                
-                if (plateau) {
-                    this.log(`★ PLATEAU: ${plateau.name}!`, '#00ff00');
-                    this.agent.addScore(500, 'PLATEAU DISCOVERED');
-                    this.showAchievementNotification(`🏆 Plateau Discovered: ${plateau.name}`);
-                }
             }
             
             passTurn() {
@@ -1627,8 +1583,7 @@
                     if (idx < stages.length - 1) {
                         this.player.stage = stages[idx + 1];
                         this.player.age = 0;
-                        this.player.maxAge = this.player.stage === 'ADULT' ? 300 : 30; // Adults live 60 seconds!
-                        this.log(`⟹ ${this.player.stage}`, '#00ffff');
+                        this.player.maxAge = this.player.stage === 'ADULT' ? 300 : 30;
                         this.updatePlayerSprite();
                     } else {
                         this.die('old age');
@@ -1641,41 +1596,28 @@
                 if (!food) return;
                 
                 if (food.type === 'ENERGY') {
-                    // Energy food - simple, no risk
                     this.player.energy = Math.min(100, this.player.energy + 30);
-                    this.log('✓ Energy +30', '#00ff00');
                     this.createParticleEffect(this.player.q, this.player.r, 0x00ff00, 10);
-                    this.showScorePopup(this.player.q, this.player.r, '+50', 0xffff00);
                     this.agent.onFeeding('ENERGY');
                 } else {
-                    // DNA food - USE EoP SYSTEM for risk/reward!
                     if (!this.player.genome.slots[food.gene]) {
                         const cf = this.eopSystem.calculateCF(this.player, food, this.player.posture);
                         const result = this.eopSystem.roll(this.player, food.gene, cf, this.player.posture);
                         
                         if (result.outcome === 'SI') {
-                            // SUCCESS!
                             this.player.genome.slots[food.gene] = true;
                             this.player.genome.instability = Math.max(0, this.player.genome.instability + result.instability);
-                            this.log(`✓ DNA: ${food.gene} [SI]`, '#00ff00');
                             this.createParticleEffect(this.player.q, this.player.r, food.color, 15);
-                            this.showScorePopup(this.player.q, this.player.r, `+${result.score}`, 0x00ffff);
                             this.agent.onFeeding('DNA');
                         } else if (result.outcome === 'CS') {
-                            // CRITICAL FAILURE!
                             this.player.genome.instability += result.instability;
                             this.player.stunned = result.stun;
-                            this.log(`☠ CS! Stunned ${result.stun} turns`, '#ff0000');
                             this.createParticleEffect(this.player.q, this.player.r, 0xff0000, 20);
-                            this.showScorePopup(this.player.q, this.player.r, `${result.score}`, 0xff0000);
                             this.agent.addScore(result.score, 'CRITICAL FAILURE');
                         } else {
-                            // MIXED/NEUTRAL
                             this.player.genome.slots[food.gene] = true;
                             this.player.genome.instability += result.instability;
-                            this.log(`~ DNA: ${food.gene} [MF]`, '#ffff00');
                             this.createParticleEffect(this.player.q, this.player.r, food.color, 10);
-                            this.showScorePopup(this.player.q, this.player.r, `+${result.score}`, 0xffff00);
                             this.agent.addScore(result.score, 'DNA MIXED');
                         }
                     }
@@ -1685,25 +1627,6 @@
                 food.respawnTimer = 10;
                 this.drawWorld();
                 this.updateAllUI();
-            }
-            
-            showScorePopup(q, r, text, color) {
-                const pos = this.hexGrid.hexToPixel(q, r);
-                const popup = this.add.text(pos.x, pos.y - 20, text, {
-                    fontSize: '20px',
-                    fontFamily: 'Courier New',
-                    fontStyle: 'bold',
-                    color: '#' + color.toString(16).padStart(6, '0')
-                });
-                popup.setOrigin(0.5);
-                
-                this.tweens.add({
-                    targets: popup,
-                    y: pos.y - 60,
-                    alpha: 0,
-                    duration: 1000,
-                    onComplete: () => popup.destroy()
-                });
             }
             
             mate() {
@@ -1719,11 +1642,7 @@
                     });
                 }
                 
-                // PARTICLE EFFECT!
                 this.createParticleEffect(this.player.q, this.player.r, 0xff69b4, 20);
-                this.showScorePopup(this.player.q, this.player.r, '+500', 0xff69b4);
-                
-                this.log('═══ BROOD LAID ═══', '#ff69b4');
                 this.agent.onMating();
                 document.getElementById('has-brood').style.display = 'block';
             }
@@ -1797,7 +1716,6 @@
                 document.getElementById('has-brood').style.display = 'none';
                 
                 this.updatePlayerSprite();
-                this.log(`═══ GEN ${this.generation} ═══`, '#00ff00');
                 this.updateAllUI();
             }
             
@@ -1812,7 +1730,6 @@
                 this.predators.forEach(pred => {
                     if (Math.random() < 0.4) {
                         if (pred.behavior === 'chase' && pred.speed > 0) {
-                            // Chase player if within vision
                             const dq = this.player.q - pred.q;
                             const dr = this.player.r - pred.r;
                             const dist = Math.abs(dq) + Math.abs(dr);
@@ -1825,7 +1742,6 @@
                                 }
                             }
                         } else if (pred.behavior === 'patrol' && pred.speed > 0) {
-                            // Patrol back and forth
                             pred.patrolCount++;
                             if (pred.patrolCount >= 4) {
                                 pred.patrolCount = 0;
@@ -1838,7 +1754,6 @@
                                 pred.r += pred.patrolDir * pred.speed;
                             }
                         }
-                        // web type doesn't move (speed=0)
                     }
                 });
                 this.drawPredators();
@@ -1849,7 +1764,6 @@
                 this.predators.forEach(pred => {
                     const pos = this.hexGrid.hexToPixel(pred.q, pred.r);
                     
-                    // Vision radius
                     this.predatorGraphics.fillStyle(pred.color, 0.1);
                     this.predatorGraphics.fillCircle(pos.x, pos.y, this.hexSize * pred.vision);
                     
@@ -1857,7 +1771,6 @@
                     this.predatorGraphics.lineStyle(3, pred.color, 1);
                     
                     if (pred.type === 'JUMPING_SPIDER') {
-                        // X shape
                         this.predatorGraphics.beginPath();
                         this.predatorGraphics.moveTo(pos.x - 8, pos.y - 8);
                         this.predatorGraphics.lineTo(pos.x + 8, pos.y + 8);
@@ -1865,7 +1778,6 @@
                         this.predatorGraphics.lineTo(pos.x - 8, pos.y + 8);
                         this.predatorGraphics.strokePath();
                     } else if (pred.type === 'DRAGONFLY') {
-                        // Diamond shape
                         this.predatorGraphics.beginPath();
                         this.predatorGraphics.moveTo(pos.x, pos.y - 10);
                         this.predatorGraphics.lineTo(pos.x + 7, pos.y);
@@ -1875,7 +1787,6 @@
                         this.predatorGraphics.fillPath();
                         this.predatorGraphics.strokePath();
                     } else if (pred.type === 'ORB_SPIDER') {
-                        // Web pattern
                         this.predatorGraphics.fillCircle(pos.x, pos.y, 6);
                         for (let i = 0; i < 8; i++) {
                             const angle = i * Math.PI / 4;
@@ -1893,7 +1804,7 @@
             
             updateNPCs() {
                 this.npcFlies.forEach(npc => {
-                    if (Math.random() < 0.5) { // Increased from 0.3 to 0.5
+                    if (Math.random() < 0.5) {
                         const dirs = [{ q: 0, r: -1 }, { q: 0, r: 1 }, { q: -1, r: 0 }, { q: 1, r: 0 }];
                         const dir = dirs[Math.floor(Math.random() * dirs.length)];
                         npc.q += dir.q;
@@ -1914,7 +1825,7 @@
             
             die(cause) {
                 this.player.alive = false;
-                this.log(`DEATH: ${cause}`, '#ff0000');
+                console.log(`DEATH: ${cause}`);
                 
                 this.time.delayedCall(2000, () => {
                     this.generation++;
@@ -1926,7 +1837,6 @@
                     this.player.r = 0;
                     this.player.alive = true;
                     this.updatePlayerSprite();
-                    this.log(`Respawned - Gen ${this.generation}`, '#00ff00');
                     this.updateAllUI();
                 });
             }
@@ -1945,7 +1855,6 @@
                     this.selectOffspring(action.index);
                 }
                 
-                this.agent.reward(this);
                 this.updateAllUI();
             }
             
@@ -1960,9 +1869,6 @@
                 document.getElementById('loci-count').textContent = loci;
                 document.getElementById('instability-display').textContent = this.player.genome.instability;
                 
-                const dnaItems = this.player.inventory.length;
-                document.getElementById('dna-count').textContent = dnaItems;
-                
                 document.getElementById('npc-count').textContent = this.npcFlies.length;
                 
                 const nearFood = this.foodSources.filter(f => {
@@ -1971,46 +1877,21 @@
                 }).length;
                 document.getElementById('food-count').textContent = nearFood;
                 
-                document.getElementById('ai-fitness').textContent = Math.floor(this.agent.currentFitness);
+                // Brain stats
+                document.getElementById('cx-heading').textContent = Math.floor(this.agent.cx.getHeadingAngle()) + '°';
+                const valence = this.agent.mb.getValence();
+                document.getElementById('mb-valence').textContent = (valence.approach - valence.avoid).toFixed(2);
+                document.getElementById('dopamine').textContent = this.agent.dopamine.toFixed(2);
                 document.getElementById('ai-strategy').textContent = this.agent.currentStrategy;
                 
-                // SCORING UI
+                // Scoring
                 document.getElementById('score-display').textContent = this.agent.score;
                 document.getElementById('high-score-display').textContent = this.agent.highScore;
                 document.getElementById('gens-reached').textContent = this.agent.generationsReached;
-                document.getElementById('total-mates').textContent = this.agent.totalMates;
-                document.getElementById('total-food').textContent = this.agent.totalFood;
-                document.getElementById('total-dna').textContent = this.agent.totalDNA;
-                document.getElementById('total-dist').textContent = Math.floor(this.agent.totalDistance);
                 
-                // TOPOLOGY UI
-                const parityStatus = document.getElementById('parity-status');
-                if (parityStatus) {
-                    parityStatus.innerHTML = this.player.parityFlipped ? 
-                        'Parity: <span class="warning">FLIPPED</span>' : 
-                        'Parity: <span class="quantum">NORMAL</span>';
-                }
-                const seamCount = document.getElementById('seam-count');
-                if (seamCount) {
-                    seamCount.innerHTML = `Seams: <span class="stat">${this.seamCrossings}</span>`;
-                }
-                
-                // PLATEAU UI
-                const plateauCount = document.getElementById('plateau-count');
-                if (plateauCount) {
-                    plateauCount.textContent = this.museum.plateaus.length;
-                }
-                const plateauRecent = document.getElementById('plateau-recent');
-                if (plateauRecent) {
-                    if (this.museum.plateaus.length === 0) {
-                        plateauRecent.textContent = 'None yet';
-                    } else {
-                        const recent = this.museum.plateaus.slice(-3).reverse();
-                        plateauRecent.innerHTML = recent.map(p => 
-                            `${p.name} (G${p.generation})`
-                        ).join('<br>');
-                    }
-                }
+                // Memory
+                document.getElementById('mem-danger').textContent = this.agent.dangerMap.size;
+                document.getElementById('mem-visited').textContent = this.agent.visitedTiles.size;
                 
                 // Respawn food
                 this.foodSources.forEach(f => {
@@ -2020,50 +1901,7 @@
                     }
                 });
             }
-            
-            log(message, color = '#ffff00') {
-                console.log(message);
-            }
         }
-        
-        // ============================================================================
-        // PATCH 5: SELF-TESTS
-        // ============================================================================
-        
-        // TEST: GPU manifold updates state (only meaningful if WebGL2 is present)
-        (function testGPUState() {
-            const m = new GPUFILManifold(256);
-            if (!m.useCPU) {
-                const before = m.state.slice(0, 8).map(v => v.toFixed(4)).join(',');
-                console.log('TEST: GPU state before evolve:', before);
-                m.evolve();
-                m.downloadState();
-                const after = m.state.slice(0, 8).map(v => v.toFixed(4)).join(',');
-                console.log('TEST: GPU state after evolve+download:', after);
-                if (before === after) {
-                    console.error('TEST ❌ GPU state did not change after evolve+download');
-                    console.log('TEST: This suggests shader may not be executing or readback failed');
-                    console.log('TEST: Game will fall back to CPU computation in neural forward pass');
-                } else {
-                    console.log('TEST ✔ GPU evolve+download changes state');
-                }
-            } else {
-                console.log('TEST ◦ GPU fallback (CPU path), skipped evolve test');
-            }
-        })();
-        
-        // TEST: Sensory bands don't collide
-        (function testBands() {
-            const agent = new MassiveFILAgent();
-            const {DIR_START, DIR_LEN, CHEM_START, CHEM_LEN, INT_START} = agent.BANDS;
-            if (DIR_START + DIR_LEN > CHEM_START) {
-                console.error('TEST ❌ DIR overlaps CHEM');
-            } else if (CHEM_START + CHEM_LEN > INT_START) {
-                console.error('TEST ❌ CHEM overlaps INT');
-            } else {
-                console.log('TEST ✔ Sensory bands non-overlapping');
-            }
-        })();
         
         const config = {
             type: Phaser.AUTO,
